@@ -1,21 +1,14 @@
 import json
-import os
-from datetime import datetime
 import re
-from typing import List, Optional
 
 from objects.constants import RG_SPLIT_CHARS
 import argparse
 
 from objects.ytm_processed_track import YTMProcessedResults, YTMProcessedTrack
 
-from objects.ytm_watch_history import YTMWatchHistoryEntry
-
-def convert_to_unix_timestamp(iso_timestamp):
-    if iso_timestamp:
-        dt = datetime.fromisoformat(iso_timestamp.replace('Z', '+00:00'))
-        return int(dt.timestamp())
-    return None
+from utils.json_exporter import export_to_json
+from utils.timestamps import convert_to_unix_timestamp
+from ytm.ytm_watch_history import YTMWatchHistoryEntry
 
 def sanitize_video_track_info(track_name: str, artist_name: str) -> tuple[str, str]:
     """
@@ -130,32 +123,6 @@ def process_youtube_music_entries(input_file="watch-history.json", ignore_videos
         print(f"Error: Invalid JSON in {input_file}")
         return []
 
-def export_to_json(data: List[YTMProcessedTrack], input_filename: str, suffix="") -> Optional[str]:
-    """
-    Export filtered data to a JSON file with 'sanitized' suffix
-    """
-    # Create output filename by adding "sanitized" before the file extension
-    base_name = os.path.splitext(input_filename)[0]
-    extension = os.path.splitext(input_filename)[1]
-    output_dir = "output"
-    os.makedirs(output_dir, exist_ok=True)
-    output_file = os.path.join(output_dir, f"{os.path.basename(base_name)}-sanitized{suffix}{extension}")
-    
-    try:
-        # Convert objects to dictionaries for JSON serialization
-        json_data = [track.to_dict() for track in data]
-        
-        # Write filtered entries to output file
-        with open(output_file, 'w', encoding='utf-8') as output:
-            json.dump(json_data, output, indent=2, ensure_ascii=False)
-        
-        print(f"Sanitized data written to: {output_file}")
-        return output_file
-    
-    except Exception as e:
-        print(f"Error writing to {output_file}: {e}")
-        return None
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process YouTube Music history")
     parser.add_argument("--file", default="watch-history.json", help="Input file path (default: watch-history.json)")
@@ -168,9 +135,9 @@ if __name__ == "__main__":
 
     if ytm_entries and (ytm_entries.songs or ytm_entries.music_videos):
         print(f"Found {len(ytm_entries.songs)} songs, {len(ytm_entries.music_videos)} music videos and {len(ytm_entries.errors)} errors")
-        export_to_json(ytm_entries.songs, input_file, "-songs")
-        export_to_json(ytm_entries.music_videos, input_file, "-videos")
-        export_to_json(ytm_entries.errors, input_file, "-errors")
+        export_to_json(ytm_entries.songs, input_file, "sanitized-songs")
+        export_to_json(ytm_entries.music_videos, input_file, "sanitized-videos")
+        export_to_json(ytm_entries.errors, input_file, "sanitized-errors")
         print("Processing complete. Songs and videos exported into separate files.")
         print("Double check the music videos file since the processing is not fully deterministic, everybody names their songs in various formats, some might be unsupported.")
         print("Check the errors file - those tracks could not be processed, might have missing information")

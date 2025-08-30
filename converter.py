@@ -3,8 +3,9 @@ import argparse
 import os
 from typing import List
 from dotenv import load_dotenv
-from objects.spotify_listening_history import SpotifyAdditionalYTMData, SpotifyStreamingEntry
+from spotify.spotify_listening_history import SpotifyAdditionalYTMData, SpotifyStreamingEntry
 from objects.ytm_processed_track import YTMProcessedTrack
+from utils.json_exporter import export_to_json
 
 def convert_ytm_to_spotify_format(input_file: str) -> List[SpotifyStreamingEntry]:
     """
@@ -40,32 +41,6 @@ def convert_ytm_to_spotify_format(input_file: str) -> List[SpotifyStreamingEntry
         print(f"Error processing file: {e}")
         return []
 
-def export_spotify_entries(entries: List[SpotifyStreamingEntry], input_filename: str) -> str:
-    """
-    Export Spotify streaming entries to JSON file
-    """
-    # Create output filename
-    base_name = os.path.splitext(input_filename)[0]
-    extension = os.path.splitext(input_filename)[1]
-    output_dir = "output"
-    os.makedirs(output_dir, exist_ok=True)
-    output_file = os.path.join(output_dir, f"{base_name}-spotify-format{extension}")
-
-    try:
-        # Convert objects to dictionaries for JSON serialization
-        json_data = [entry.to_dict() for entry in entries]
-        
-        # Write to output file
-        with open(output_file, 'w', encoding='utf-8') as output:
-            json.dump(json_data, output, indent=2, ensure_ascii=False)
-        
-        print(f"Spotify format data written to: {output_file}")
-        return output_file
-    
-    except Exception as e:
-        print(f"Error writing to {output_file}: {e}")
-        return ""
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Convert YTM processed tracks to Spotify streaming format")
     parser.add_argument("--file", required=True, help="Input JSON file with YTM processed tracks")
@@ -81,7 +56,7 @@ if __name__ == "__main__":
     
     if spotify_entries:
         print(f"Successfully converted {len(spotify_entries)} YTM tracks to Spotify format")
-        export_spotify_entries(spotify_entries, input_file)
+        export_to_json(spotify_entries, input_file, "spotify-format")
         print("Conversion complete")
     else:
         print("No tracks converted or error occurred")

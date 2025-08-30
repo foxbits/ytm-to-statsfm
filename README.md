@@ -51,9 +51,24 @@ For more insights into the Spotify Data format, see [understanding my data](http
 3. You will obtain a new json file named `your-file-spotify-format.json` (e.g. `watch-history-sanitized-songs-spotify-format.json`) in the `output` directory.
 4. You can use this file as you would use a normal spotify listening history file
 
+### Using the Spotify API to enrich the data
+
+Since YTM does provide only the artist name, track title and time played, a lot of the specific Spotify data is missing, most importantly the Spotify Track ID, the Album Name and the actual time played.
+
+
+### Example of full flow
+
+```
+python sanitizer.py --file watch-history-small.json
+python converter.py --file output\\watch-history-small-sanitized-songs.json
+python converter.py --file output\\watch-history-small-sanitized-videos.json
+```
+
 ## Caveats / Troubleshooting
 
 1. It does not process data watched on the YouTube site itself, because the Google Takeout data for listening history does not contain video type, therefore music videos cannot be identified.
-2. The script runs by default without the `--ignore-videos` flag. 
+2. I recommend you to test first with a small portion of your data (just pick a few entries from the array); if everything is ok, go with the full data
+3. The script runs by default without the `--ignore-videos` flag. 
    As you know, on YT Music you can both listen to songs and watch videos (which are basically YouTube videos). 
    These videos often do not have standard track artist / title naming format and usually put everything in the title (since they are YT videos) - e.g. "Artist - Song | Official Audio" and other variations. This means that the script has to do some non-deterministic guessing as in what's the artist and the song title in such videos, which often fails if you want a lot of music videos with non-standard formatting. Therefore, you can choose to ignore such videos watched on YT Music (note: videos watched on YouTube itself are automatically ignored). If you choose not to ignore them, the script tries to sanitize them as best as it can, following the format <artist-name><split-chars><song-title> and stripping any Official* (with/without paranthesis) from the song
+

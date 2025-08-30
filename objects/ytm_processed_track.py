@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from objects.ytm_watch_history import YTMWatchHistoryEntry
+from ytm.ytm_watch_history import YTMWatchHistoryEntry
 
 class YTMProcessedTrackMetadata:
     def __init__(self, original_channel: str = "", original_title: str = "", ytm_url: str = ""):
