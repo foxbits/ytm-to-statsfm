@@ -1,0 +1,6 @@
+YT_MUSIC_HEADER = 'YouTube Music'
+SPLIT_CHARACTERS = [r"-", r"💕"]
+EXTRA_CHARACTERS = SPLIT_CHARACTERS + [r"|"]
+RG_SPLIT_CHARS = r"[" + "".join(SPLIT_CHARACTERS) + r"]"
+RG_NONSPLIT_CHARS = r"[^" + "".join(SPLIT_CHARACTERS) + r"]"
+RG_EXTRA_CHARACTERS = r"[" + "".join(EXTRA_CHARACTERS) + r"]"
