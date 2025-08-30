@@ -5,7 +5,8 @@ from typing import List
 from dotenv import load_dotenv
 from spotify.spotify_listening_history import SpotifyAdditionalYTMData, SpotifyStreamingEntry
 from objects.ytm_processed_track import YTMProcessedTrack
-from utils.json_exporter import export_to_json
+from utils.file_utils import export_to_json
+from utils.simple_logger import print_log
 
 def convert_ytm_to_spotify_format(input_file: str) -> List[SpotifyStreamingEntry]:
     """
@@ -32,13 +33,13 @@ def convert_ytm_to_spotify_format(input_file: str) -> List[SpotifyStreamingEntry
         return spotify_entries
     
     except FileNotFoundError:
-        print(f"Error: {input_file} not found")
+        print_log(f"Error: {input_file} not found")
         return []
     except json.JSONDecodeError:
-        print(f"Error: Invalid JSON in {input_file}")
+        print_log(f"Error: Invalid JSON in {input_file}")
         return []
     except Exception as e:
-        print(f"Error processing file: {e}")
+        print_log(f"Error processing file: {e}")
         return []
 
 if __name__ == "__main__":
@@ -55,8 +56,8 @@ if __name__ == "__main__":
     spotify_entries = convert_ytm_to_spotify_format(input_file)
     
     if spotify_entries:
-        print(f"Successfully converted {len(spotify_entries)} YTM tracks to Spotify format")
+        print_log(f"Successfully converted {len(spotify_entries)} YTM tracks to Spotify format")
         export_to_json(spotify_entries, input_file, "spotify-format")
-        print("Conversion complete")
+        print_log("Conversion complete")
     else:
-        print("No tracks converted or error occurred")
+        print_log("No tracks converted or error occurred")

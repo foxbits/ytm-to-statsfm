@@ -24,12 +24,12 @@ class YTMProcessedTrackMetadata:
         )
 
 class YTMProcessedTrack:
-    def __init__(self, timestamp_iso: str = "", timestamp_unix: Optional[int] = None, title: str = "", artist: str = "", metadata: YTMProcessedTrackMetadata = YTMProcessedTrackMetadata()):
+    def __init__(self, timestamp_iso: str = "", timestamp_unix: Optional[int] = None, title: str = "", artist: str = "", metadata: YTMProcessedTrackMetadata = None):
         self.timestamp_iso = timestamp_iso
         self.timestamp_unix = timestamp_unix
         self.title = title
         self.artist = artist
-        self.metadata = metadata
+        self.metadata = metadata or YTMProcessedTrackMetadata()
 
     def to_dict(self):
         return {

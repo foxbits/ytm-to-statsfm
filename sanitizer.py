@@ -1,12 +1,13 @@
 import json
 import re
 
-from objects.constants import RG_SPLIT_CHARS
+from objects.constants import FORBIDDEN_STRINGS, RG_SPLIT_CHARS
 import argparse
 
 from objects.ytm_processed_track import YTMProcessedResults, YTMProcessedTrack
 
-from utils.json_exporter import export_to_json
+from utils.file_utils import export_to_json
+from utils.simple_logger import print_log
 from utils.timestamps import convert_to_unix_timestamp
 from ytm.ytm_watch_history import YTMWatchHistoryEntry
 
@@ -49,9 +50,11 @@ def sanitize_video_track_info(track_name: str, artist_name: str) -> tuple[str, s
             artist_name = artistmatch.group(1).strip()
             track_name = artistmatch.group(3).strip()
     
-    # final sanitization - remove split characters (any leftovers) from track name, but it also removes stuff like "Name | Live" (the Live part)
-    # track_name = re.sub(r"(\s" + RG_EXTRA_CHARACTERS + r"\s)(.+)", "", track_name).strip()
-    
+    # remove unwanted extra characters
+    for pattern in FORBIDDEN_STRINGS:
+        track_name = re.sub(pattern, " ", track_name, flags=re.IGNORECASE|re.UNICODE).strip()
+        artist_name = re.sub(pattern, " ", artist_name, flags=re.IGNORECASE|re.UNICODE).strip()
+
     return track_name, artist_name
 
 def process_youtube_music_entries(input_file="watch-history.json", ignore_videos=False) -> YTMProcessedResults:
@@ -91,7 +94,7 @@ def process_youtube_music_entries(input_file="watch-history.json", ignore_videos
 
             is_valid = track.artist and track.title
             if not is_valid:
-                print(f"Skipping invalid entry (cannot identify track/artist): [{entry.title}][{track.metadata.ytm_url}]")
+                print_log(f"Skipping invalid entry (cannot identify track/artist): [{entry.title}][{track.metadata.ytm_url}]")
                 processed.errors.append(entry)
                 continue
 
@@ -99,7 +102,7 @@ def process_youtube_music_entries(input_file="watch-history.json", ignore_videos
             # if the flag to ignore them is true, then do not consider them
             is_video = is_valid and "- Topic" not in track.artist
             if is_video and ignore_videos:
-                print(f"Ignoring video due to setting: [{entry.title}][{track.metadata.ytm_url}]")
+                print_log(f"Ignoring video due to setting: [{entry.title}][{track.metadata.ytm_url}]")
                 continue
 
             if track.artist and "- Topic" in track.artist:
@@ -117,10 +120,10 @@ def process_youtube_music_entries(input_file="watch-history.json", ignore_videos
         return processed
     
     except FileNotFoundError:
-        print(f"Error: {input_file} not found")
+        print_log(f"Error: {input_file} not found")
         return []
     except json.JSONDecodeError:
-        print(f"Error: Invalid JSON in {input_file}")
+        print_log(f"Error: Invalid JSON in {input_file}")
         return []
 
 if __name__ == "__main__":
@@ -134,12 +137,12 @@ if __name__ == "__main__":
     ytm_entries = process_youtube_music_entries(input_file, ignore_videos)
 
     if ytm_entries and (ytm_entries.songs or ytm_entries.music_videos):
-        print(f"Found {len(ytm_entries.songs)} songs, {len(ytm_entries.music_videos)} music videos and {len(ytm_entries.errors)} errors")
+        print_log(f"Found {len(ytm_entries.songs)} songs, {len(ytm_entries.music_videos)} music videos and {len(ytm_entries.errors)} errors")
         export_to_json(ytm_entries.songs, input_file, "sanitized-songs")
         export_to_json(ytm_entries.music_videos, input_file, "sanitized-videos")
         export_to_json(ytm_entries.errors, input_file, "sanitized-errors")
-        print("Processing complete. Songs and videos exported into separate files.")
-        print("Double check the music videos file since the processing is not fully deterministic, everybody names their songs in various formats, some might be unsupported.")
-        print("Check the errors file - those tracks could not be processed, might have missing information")
+        print_log("Processing complete. Songs and videos exported into separate files.")
+        print_log("Double check the music videos file since the processing is not fully deterministic, everybody names their songs in various formats, some might be unsupported.")
+        print_log("Check the errors file - those tracks could not be processed, might have missing information")
     else:
-        print("No YouTube Music entries found or error occurred")
+        print_log("No YouTube Music entries found or error occurred")

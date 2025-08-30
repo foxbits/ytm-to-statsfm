@@ -19,8 +19,10 @@ class SpotifyAdditionalYTMData:
 class SpotifyStreamingEntry:
     def __init__(self, ts: str = "",
                  master_metadata_track_name: str = "", master_metadata_album_artist_name: str = "", 
-                 additional_data: SpotifyAdditionalYTMData = SpotifyAdditionalYTMData()):
+                 additional_data: SpotifyAdditionalYTMData = None):
         
+        additional_data = additional_data or SpotifyAdditionalYTMData()
+
         # data that actually exists in YTM history
         self.ts = ts
         self.master_metadata_track_name = master_metadata_track_name
@@ -57,7 +59,8 @@ class SpotifyStreamingEntry:
         self.shuffle = None
     
     @classmethod
-    def from_ytm_track(cls, ytm_track: YTMProcessedTrack, additional_data: SpotifyAdditionalYTMData = SpotifyAdditionalYTMData()):
+    def from_ytm_track(cls, ytm_track: YTMProcessedTrack, additional_data: SpotifyAdditionalYTMData = None):
+        additional_data = additional_data or SpotifyAdditionalYTMData()
         return cls(
             ts=ytm_track.timestamp_iso,
             master_metadata_track_name=ytm_track.title,
@@ -95,11 +98,11 @@ class SpotifyStreamingEntry:
     @classmethod
     def from_dict(cls, data: dict):
         entry = cls()
-        entry.ts=data.get("ts", ""),
-        entry.master_metadata_track_name=data.get("master_metadata_track_name", ""),
+        entry.ts=data.get("ts", "")
+        entry.master_metadata_track_name=data.get("master_metadata_track_name", "")
         entry.master_metadata_album_artist_name=data.get("master_metadata_album_artist_name", "")
-        entry.conn_country=data.get("conn_country", ""),
-        entry.platform=data.get("platform", ""),
+        entry.conn_country=data.get("conn_country", "")
+        entry.platform=data.get("platform", "")
         entry.ip_addr=data.get("ip_addr", "")
         entry.ms_played=data.get("ms_played", 0)
         entry.master_metadata_album_album_name = data.get("master_metadata_album_album_name", "")

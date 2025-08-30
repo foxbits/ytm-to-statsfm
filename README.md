@@ -21,6 +21,8 @@ This repo contains a set of python scripts that allow you to convert the YouTube
 1. Clone this repo
 2. Run `pip install -r requirements.txt` to install dependencies
 
+**Note**: all the scripts will output informational logs to both screen and to the file `output/logs.txt`.
+
 ### Listening history sanitization
 
 1. Copy your `watch-history.json` into the same folder as these scripts
@@ -47,13 +49,31 @@ For more insights into the Spotify Data format, see [understanding my data](http
    3. `PLATFORM` - Put your own platform (needs to be supported by spotify), or use `ios`.
    4. `IP_ADDR` - your ip address - use some random one or add your actual ip address (https://www.whatsmyip.org)
 
-2. Run `python converter.py --file watch-history-sanitized-songs.json` or `python converter.py --file watch-history-sanitized-videos.json` or with your preffered file that follows the YTM format defined in [`types/ytm_processed_track.py`](types/ytm_processed_track.py)
-3. You will obtain a new json file named `your-file-spotify-format.json` (e.g. `watch-history-sanitized-songs-spotify-format.json`) in the `output` directory.
-4. You can use this file as you would use a normal spotify listening history file
+2. Run `python converter.py --file output\\watch-history-small-sanitized-songs.json` (and `python converter.py --file output\\watch-history-small-sanitized-videos.json` if you have checked and want to process the watched YTM videos as well).. or with your preffered file that follows the YTM format defined in [`types/ytm_processed_track.py`](types/ytm_processed_track.py) if you used other names
+3. You will obtain a new json file named `your-file-spotify-format.json` in the `output` directory (e.g. `output\\watch-history-sanitized-songs-spotify-format.json`).
+4. You can use this file as you would use a normal spotify listening history file, except that it does not have such significant data except the artist name, track name and timestamp played
 
 ### Using the Spotify API to enrich the data
 
 Since YTM does provide only the artist name, track title and time played, a lot of the specific Spotify data is missing, most importantly the Spotify Track ID, the Album Name and the actual time played.
+
+This extra data (the most important being the spotify track id) is identified through searching the Spotify Metadata API by artist & track name.
+
+#### Configure a Spotify API Key
+
+1. Make sure you have a Spotify Developer account and an application to use for this part
+   1. Go to https://developer.spotify.com/dashboard, login and create an app
+   2. Put in a name and description (like ytm-history-converter)
+   3. For callbacks add something random (but valid) like `https://localhost:3000/callback`. This will, anyway, not be used, since we won't be connecting with an user account (using only metadata API)
+   4. Check only the Web API in the Which APIs/SDKs are you planning to use
+2. Copy your client id and client secret and put them in the .env file
+   1. `SPOTIFY_CLIENT_ID` - client id
+   2. `SPOTIFY_CLIENT_SECRET` - client secret
+
+#### Enrich the data
+
+1. Run `python enricher.py --file output\\watch-history-small-sanitized-songs-spotify-format.json`
+
 
 
 ### Example of full flow
@@ -62,7 +82,12 @@ Since YTM does provide only the artist name, track title and time played, a lot 
 python sanitizer.py --file watch-history-small.json
 python converter.py --file output\\watch-history-small-sanitized-songs.json
 python converter.py --file output\\watch-history-small-sanitized-videos.json
+python enricher.py --file output\\watch-history-small-sanitized-songs-spotify-format.json
+python enricher.py --file output\\watch-history-small-sanitized-videos-spotify-format.json
 ```
+
+- test if one fails
+- test with video
 
 ## Caveats / Troubleshooting
 
