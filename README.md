@@ -59,7 +59,7 @@ Since YTM does provide only the artist name, track title and time played, a lot 
 
 This extra data (the most important being the spotify track id) is identified through searching the Spotify Metadata API by artist & track name. This result will sometimes return multiple entries, so this is a multi-step process
 
-#### 5.1 Configure a Spotify API Key
+#### 5.1 Configure the Spotify Client
 
 1. Make sure you have a Spotify Developer account and an application to use for this part
    1. Go to https://developer.spotify.com/dashboard, login and create an app
@@ -69,7 +69,10 @@ This extra data (the most important being the spotify track id) is identified th
 2. Copy your client id and client secret and put them in the .env file
    1. `SPOTIFY_CLIENT_ID` - client id
    2. `SPOTIFY_CLIENT_SECRET` - client secret
-3. The API search will use the `CONN_COUNTRY` value for the market to search for (in order to display results from where you actually use Spotify, not default - Global/US)
+3. Set the following settings for communicating with Spotify (can use defaults from example):
+   1. `SPOTIFY_SEARCH_RESULTS_LIMIT` -> the number of tracks to search for matching in Spotify; this is exported in the enriched data for determining the best match; the number should not be very big (1 for exact matching => risky)
+   2. `SPOTIFY_MAX_RETRIES` -> number of retries to do on rate limiting api errors
+4. The API search will use the `CONN_COUNTRY` value for the market to search for (in order to display results from where you actually use Spotify, not default - Global/US). This should be set already from the previous steps
 
 #### 5.2 Enrich the data
 

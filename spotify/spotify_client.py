@@ -1,7 +1,7 @@
 import random
 import time
-from typing import List, Optional, Dict
-from spotify.constants import DEFAULT_BASE_BACKOFF_SECONDS, DEFAULT_MAX_RETRIES, DEFAULT_MIN_INTERVAL_SECONDS, DEFAULT_RETURNED_RESULTS
+from typing import List
+from spotify.constants import DEFAULT_BASE_BACKOFF_SECONDS, DEFAULT_MIN_INTERVAL_SECONDS
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 from spotipy.exceptions import SpotifyException
@@ -9,11 +9,10 @@ from spotify.spotify_responses import TrackInfo
 from utils.simple_logger import print_log
 
 class SpotifyClient:
-    def __init__(self, client_id: str, client_secret: str, market: str):
+    def __init__(self, client_id: str, client_secret: str, market: str, search_results_limit: int, max_retries: int):
         """
         Initialize Spotify API client
         """
-        
         if not client_id or not client_secret or not market:
             print_log("Error: SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, and CONN_COUNTRY must be set in .env file")
             print_log("Get your credentials from: https://developer.spotify.com/dashboard/applications")
@@ -26,6 +25,7 @@ class SpotifyClient:
 
         self.spotify = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
         self.market = market
+        self.search_results_limit = search_results_limit
 
         # Local cache to avoid duplicate API calls
         self.cache = {}
@@ -33,7 +33,7 @@ class SpotifyClient:
         # Rate limiting variables
         self.last_request_time = 0
         self.min_request_interval = DEFAULT_MIN_INTERVAL_SECONDS  # Start with 100ms between requests
-        self.max_retries = DEFAULT_MAX_RETRIES
+        self.max_retries = max_retries
         self.base_backoff = DEFAULT_BASE_BACKOFF_SECONDS  # Base backoff time in seconds
 
     def _adaptive_delay(self):
@@ -126,7 +126,7 @@ class SpotifyClient:
                 self.spotify.search, 
                 q=query, 
                 type='track', 
-                limit=DEFAULT_RETURNED_RESULTS,
+                limit=self.search_results_limit,
                 market=self.market
             )
             
@@ -141,7 +141,7 @@ class SpotifyClient:
                     self.spotify.search,
                     q=query,
                     type='track',
-                    limit=DEFAULT_RETURNED_RESULTS,
+                    limit=self.search_results_limit,
                     market=self.market
                 )
 
