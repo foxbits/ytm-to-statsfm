@@ -1,7 +1,7 @@
 import random
 import time
-from typing import Optional, Dict
-from spotify.constants import DEFAULT_BASE_BACKOFF_SECONDS, DEFAULT_MAX_RETRIES, DEFAULT_MIN_INTERVAL_SECONDS
+from typing import List, Optional, Dict
+from spotify.constants import DEFAULT_BASE_BACKOFF_SECONDS, DEFAULT_MAX_RETRIES, DEFAULT_MIN_INTERVAL_SECONDS, DEFAULT_RETURNED_RESULTS
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 from spotipy.exceptions import SpotifyException
@@ -106,9 +106,9 @@ class SpotifyClient:
         
         return None
     
-    def search_track(self, track_name: str, artist_name: str) -> Optional[TrackInfo]:
+    def search_track(self, track_name: str, artist_name: str) -> List[TrackInfo]:
         """
-        Search for track on Spotify API
+        Search for track on Spotify API - returns first DEFAULT_RETURNED_RESULTS results
         """
         # Create cache key
         cache_key = f"{track_name.lower()}||{artist_name.lower()}"
@@ -126,13 +126,14 @@ class SpotifyClient:
                 self.spotify.search, 
                 q=query, 
                 type='track', 
-                limit=1,
+                limit=DEFAULT_RETURNED_RESULTS,
                 market=self.market
             )
             
-            track = None
-            if results['tracks']['items']:
-                track = results['tracks']['items'][0]
+            tracks_raw = []
+            tracks = []
+            if results['tracks']['items'] and len(results['tracks']['items']) > 0:
+                tracks_raw = results['tracks']['items']
             else:
                 # Try a broader search if exact match fails (with rate limiting)
                 query = f"{artist_name} {track_name}"
@@ -140,27 +141,27 @@ class SpotifyClient:
                     self.spotify.search,
                     q=query,
                     type='track',
-                    limit=1,
+                    limit=DEFAULT_RETURNED_RESULTS,
                     market=self.market
                 )
 
-                if results['tracks']['items']:
-                    track = results['tracks']['items'][0]
+                if results['tracks']['items'] and len(results['tracks']['items']) > 0:
+                    tracks_raw = results['tracks']['items']
             
-            if track is not None:
+            if len(tracks_raw) > 0:
 
-                track_info = TrackInfo(
+                tracks = [TrackInfo(
                     id=track['id'],
                     name=track['name'],
                     album_name=track['album']['name'],
                     duration_ms=track['duration_ms'],
                     artist_name=", ".join(artist['name'] for artist in track['artists']) if track['artists'] else artist_name
-                )
+                ) for track in tracks_raw]
                 
                 # Cache the result
-                self.cache[cache_key] = track_info
-                return track_info
-                    
+                self.cache[cache_key] = tracks
+                return tracks
+
         except Exception as e:
             print_log(f"Error searching for track '{track_name}' by '{artist_name}': {e}")
             # Cache negative result to avoid retrying

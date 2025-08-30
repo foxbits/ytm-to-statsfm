@@ -1,6 +1,10 @@
 # Header that identifies YouTube Music entries in the YT History
 YT_MUSIC_HEADER = 'YouTube Music'
 
+# Songs on YT/YTM have the format <artistName> - Topic
+# Everything not following this format is a MV
+YT_MUSIC_TRACK_IDENTIFIER = "- Topic"
+
 # Characters that are used as artist-song splitters (only for videos watched on YTM)
 SPLIT_CHARACTERS = [r"-", r"💕"]
 

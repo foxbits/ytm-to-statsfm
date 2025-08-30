@@ -1,4 +1,6 @@
+from objects.process_metadata import SpotifyProcessingMetadata
 from objects.ytm_processed_track import YTMProcessedTrack
+from spotify.constants import SPOTIFY_URI_PREFIX
 
 
 class SpotifyAdditionalYTMData:
@@ -57,7 +59,16 @@ class SpotifyStreamingEntry:
         self.audiobook_chapter_uri = None
         self.audiobook_chapter_title = None
         self.shuffle = None
-    
+
+        # Processing metadata
+        self.metadata = SpotifyProcessingMetadata()
+
+    def has_basic_info(self):
+        return bool(self.master_metadata_track_name and self.master_metadata_album_artist_name)
+
+    def has_spotify_data(self):
+        return bool(self.spotify_track_uri) and self.spotify_track_uri.startswith(SPOTIFY_URI_PREFIX)
+
     @classmethod
     def from_ytm_track(cls, ytm_track: YTMProcessedTrack, additional_data: SpotifyAdditionalYTMData = None):
         additional_data = additional_data or SpotifyAdditionalYTMData()
@@ -92,7 +103,8 @@ class SpotifyStreamingEntry:
             "skipped": self.skipped,
             "offline": self.offline,
             "offline_timestamp": self.offline_timestamp,
-            "incognito_mode": self.incognito_mode
+            "incognito_mode": self.incognito_mode,
+            "metadata": self.metadata.to_dict()
         }
 
     @classmethod
@@ -121,4 +133,5 @@ class SpotifyStreamingEntry:
         entry.offline = data.get("offline", False)
         entry.offline_timestamp = data.get("offline_timestamp")
         entry.incognito_mode = data.get("incognito_mode", False)
+        entry.metadata = SpotifyProcessingMetadata.from_dict(data.get("metadata", {}))
         return entry

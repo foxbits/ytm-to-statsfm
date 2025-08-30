@@ -6,7 +6,7 @@ This repo contains a set of python scripts that allow you to convert the YouTube
 
 ## How to use
 
-### Exporting your YouTube Music Data
+### 1. Exporting your YouTube Music Data
 
 1. Go to Google Takeout at [takeout.google.com](https://takeout.google.com).
 2. Sign in with your Google account that is linked to the YouTube Music history you want to export
@@ -16,14 +16,14 @@ This repo contains a set of python scripts that allow you to convert the YouTube
 6. Select JSON as format
 7. Wait for the download link in the email
 
-### Getting the scripts
+### 2. Getting the scripts
 
 1. Clone this repo
 2. Run `pip install -r requirements.txt` to install dependencies
 
 **Note**: all the scripts will output informational logs to both screen and to the file `output/logs.txt`.
 
-### Listening history sanitization
+### 3. Listening history sanitization
 
 1. Copy your `watch-history.json` into the same folder as these scripts
 2. Run `python sanitizer.py`
@@ -35,31 +35,31 @@ This repo contains a set of python scripts that allow you to convert the YouTube
       1. Since music videos naming can follow or not follow deterministic naming standards, it is recommended to do a double check and edit / correct the entries in this file before importing. 
       2. For more details see Caveats / #2
    3. `-errors.json` - the list of entries in the history that cannot be processed** ❌
-      1. The file contains entries in the original YT Music listening history format, therefore, if you think you can fix any of the entries, have a quick look, fix them and then use the corrected file as input for the `sanitizer script`
-5. At the end of this process you will have 1/2 json files that you can use for the next step
+      1. The file contains entries in the original YT Music listening history format, therefore, if you think you can fix any of the entries, have a quick look, fix them and then use the corrected file as input for the `sanitizer script` (e.g. restart the process but with the corrected file)
+5. At the end of this process you will have 1/2/3 json files that you can use for the next step
 
 
-### Converting to Spotify format
+### 4. Converting to Spotify format
 
 For more insights into the Spotify Data format, see [understanding my data](https://support.spotify.com/article/understanding-my-data/), [`ReadMeFirst_ExtendedStreamingHistory.pdf`](docs/ReadMeFirst_ExtendedStreamingHistory.pdf) and the comments inside [`types/spotify_listening_history.py`](types/spotify_listening_history.py).
 
 1. Create a `.env` file and fill in the environment variables as identified in [`.env.example`](.env.example), according to your needs. These env vars are used to populate some default fields that are required in Spotify but not available in YTM
-   1. `MS_PLAYED` - the milliseconds played (number). YT Music listening history does not have a duration of the time played, therefore a default is needed. I recommend the usual song average of 3 minutes, which is 180s therefore `180000` (ms)
+   1. `MS_PLAYED` - the milliseconds played (number). YT Music listening history does not have a duration of the time played, therefore a default is needed. I recommend the usual song average of 3 minutes, which is 180s therefore `180000` (ms). This will be replaced if a match is found at next step, but is used as default
    2. `CONN_COUNTRY` - your country code (A-2 from [here](https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes))
    3. `PLATFORM` - Put your own platform (needs to be supported by spotify), or use `ios`.
    4. `IP_ADDR` - your ip address - use some random one or add your actual ip address (https://www.whatsmyip.org)
 
-2. Run `python converter.py --file output\\watch-history-small-sanitized-songs.json` (and `python converter.py --file output\\watch-history-small-sanitized-videos.json` if you have checked and want to process the watched YTM videos as well).. or with your preffered file that follows the YTM format defined in [`types/ytm_processed_track.py`](types/ytm_processed_track.py) if you used other names
-3. You will obtain a new json file named `your-file-spotify-format.json` in the `output` directory (e.g. `output\\watch-history-sanitized-songs-spotify-format.json`).
-4. You can use this file as you would use a normal spotify listening history file, except that it does not have such significant data except the artist name, track name and timestamp played
+2. Run `python converter.py --file output\\watch-history-sanitized-songs.json` (and `python converter.py --file output\\watch-history-sanitized-videos.json` if you have checked and want to process the watched YTM videos as well).. or with your preffered file that follows the YTM format defined in [`types/ytm_processed_track.py`](types/ytm_processed_track.py) if you used other names
+3. You will obtain a new json file named `<your-file>-spotify-format.json` in the `output` directory (e.g. `output\\watch-history-sanitized-songs-spotify-format.json`).
+4. You can use this file as you would use a normal spotify listening history file, except that it does not have such significant data except the artist name, track name and timestamp played. The full data is populated in next steps.
 
-### Using the Spotify API to enrich the data
+### 5. Using the Spotify API to enrich the data
 
 Since YTM does provide only the artist name, track title and time played, a lot of the specific Spotify data is missing, most importantly the Spotify Track ID, the Album Name and the actual time played.
 
-This extra data (the most important being the spotify track id) is identified through searching the Spotify Metadata API by artist & track name.
+This extra data (the most important being the spotify track id) is identified through searching the Spotify Metadata API by artist & track name. This result will sometimes return multiple entries, so this is a multi-step process
 
-#### Configure a Spotify API Key
+#### 5.1 Configure a Spotify API Key
 
 1. Make sure you have a Spotify Developer account and an application to use for this part
    1. Go to https://developer.spotify.com/dashboard, login and create an app
@@ -69,21 +69,48 @@ This extra data (the most important being the spotify track id) is identified th
 2. Copy your client id and client secret and put them in the .env file
    1. `SPOTIFY_CLIENT_ID` - client id
    2. `SPOTIFY_CLIENT_SECRET` - client secret
+3. The API search will use the `CONN_COUNTRY` value for the market to search for (in order to display results from where you actually use Spotify, not default - Global/US)
 
-#### Enrich the data
+#### 5.2 Enrich the data
 
-1. Run `python enricher.py --file output\\watch-history-small-sanitized-songs-spotify-format.json`
+1. Run `python enricher.py --file output\\watch-history-sanitized-songs-spotify-format.json` (and `python converter.py --file output\\watch-history-sanitized-videos.json-spotify-format` if you have checked and want to process the watched YTM videos as well)
+2. You will obtain a new set of json files:
+   1. `<your-file>-enriched-ok.json` -> contains all the successfully processed tracks with metadata -> tracks array populated with top spotify results
+   2. `<your-file>-enriched-errors.json` -> contains all the tracks that ended in error either when communicating with the Spotify API or in not being able to identify any tracks. You can inspect these errors and eventually do some edits on it and re-process
 
 
 
 ### Example of full flow
 
 ```
+#1 - sanitize and split input
 python sanitizer.py --file watch-history-small.json
+=> output\\watch-history-small-sanitized-songs.json,
+=> output\\watch-history-small-sanitized-videos.json
+=> output\\watch-history-small-sanitized-errors.json
+
+#2 - convert the songs
 python converter.py --file output\\watch-history-small-sanitized-songs.json
+=> output\\watch-history-small-sanitized-songs-spotify-format.json
+
+#3 - manually double check the videos json output\\watch-history-small-sanitized-videos.json
+
+#4 - convert the music videos
 python converter.py --file output\\watch-history-small-sanitized-videos.json
+=> output\\watch-history-small-sanitized-videos-spotify-format.json
+
+#5 - enrich the songs and/or videos with spotify track data (top X configurable)
 python enricher.py --file output\\watch-history-small-sanitized-songs-spotify-format.json
+=> output\\watch-history-small-sanitized-songs-spotify-format-enriched-ok.json
+=> output\\watch-history-small-sanitized-songs-spotify-format-enriched-errors.json
+
 python enricher.py --file output\\watch-history-small-sanitized-videos-spotify-format.json
+=> output\\watch-history-small-sanitized-videos-spotify-format-enriched-ok.json
+=> output\\watch-history-small-sanitized-videos-spotify-format-enriched-errors.json
+
+#6 - manually check the errors file(s) to see if anything can be fixed / retried (e.g. in case of rate limiting)
+
+
 ```
 
 - test if one fails

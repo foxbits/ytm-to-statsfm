@@ -10,6 +10,10 @@ def export_to_json(data: List[object], input_filename: str, suffix="processed") 
     """
     Export filtered data to a JSON file with optional suffix
     """
+    if not data or len(data) == 0:
+        print_log(f"No data available for export: {input_filename} + '{suffix}'. Not writing anything.")
+        return None
+
     # Create output filename
     filename = os.path.split(input_filename)[-1]
     base_name = os.path.splitext(filename)[0]

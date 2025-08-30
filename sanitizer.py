@@ -1,9 +1,10 @@
 import json
 import re
 
-from objects.constants import FORBIDDEN_STRINGS, RG_SPLIT_CHARS
+from objects.constants import FORBIDDEN_STRINGS, RG_SPLIT_CHARS, YT_MUSIC_TRACK_IDENTIFIER
 import argparse
 
+from objects.process_metadata import ProcessingStatus
 from objects.ytm_processed_track import YTMProcessedResults, YTMProcessedTrack
 
 from utils.file_utils import export_to_json
@@ -67,7 +68,7 @@ def process_youtube_music_entries(input_file="watch-history.json", ignore_videos
             data = [YTMWatchHistoryEntry.from_dict(item) for item in data_raw]
         
         # Filter entries where header is "YouTube Music"
-        processed = YTMProcessedResults(songs=[], music_videos=[], errors=[])
+        processed = YTMProcessedResults(songs=[], music_videos=[], errors=[], skipped=[])
         for entry in data:
             if not entry.is_youtube_music_entry():
                 continue
@@ -100,18 +101,20 @@ def process_youtube_music_entries(input_file="watch-history.json", ignore_videos
 
             # videos watched on YT Music are those not part of artist accounts (e.g. Artist - Topic format);
             # if the flag to ignore them is true, then do not consider them
-            is_video = is_valid and "- Topic" not in track.artist
+            is_video = track.is_valid() and track.is_music_video()
             if is_video and ignore_videos:
                 print_log(f"Ignoring video due to setting: [{entry.title}][{track.metadata.ytm_url}]")
+                processed.skipped.append(entry)
                 continue
 
-            if track.artist and "- Topic" in track.artist:
-                track.artist = track.artist.replace("- Topic", "").strip()
+            if track.is_valid() and track.is_music_video():
+                track.artist = track.artist.replace(YT_MUSIC_TRACK_IDENTIFIER, "").strip()
 
             # Cleanup track names which use YouTube video format (only applies to videos watched on YT music, standard music tracks do not need it)
             if is_video and not ignore_videos:
                 track.title, track.artist = sanitize_video_track_info(track.title, track.artist)
 
+            track.metadata.is_video = is_video
             if is_video:
                 processed.music_videos.append(track)
             else:
@@ -127,6 +130,7 @@ def process_youtube_music_entries(input_file="watch-history.json", ignore_videos
         return []
 
 if __name__ == "__main__":
+    # Arguments
     parser = argparse.ArgumentParser(description="Process YouTube Music history")
     parser.add_argument("--file", default="watch-history.json", help="Input file path (default: watch-history.json)")
     parser.add_argument("--ignore-videos", action="store_true", help="Ignore videos watched on YouTube Music, process only songs (default: False)")
@@ -134,15 +138,26 @@ if __name__ == "__main__":
     
     input_file = args.file
     ignore_videos = args.ignore_videos
+
+    # Process
     ytm_entries = process_youtube_music_entries(input_file, ignore_videos)
 
-    if ytm_entries and (ytm_entries.songs or ytm_entries.music_videos):
-        print_log(f"Found {len(ytm_entries.songs)} songs, {len(ytm_entries.music_videos)} music videos and {len(ytm_entries.errors)} errors")
-        export_to_json(ytm_entries.songs, input_file, "sanitized-songs")
-        export_to_json(ytm_entries.music_videos, input_file, "sanitized-videos")
-        export_to_json(ytm_entries.errors, input_file, "sanitized-errors")
-        print_log("Processing complete. Songs and videos exported into separate files.")
-        print_log("Double check the music videos file since the processing is not fully deterministic, everybody names their songs in various formats, some might be unsupported.")
-        print_log("Check the errors file - those tracks could not be processed, might have missing information")
-    else:
-        print_log("No YouTube Music entries found or error occurred")
+    # Post-process
+    if not ytm_entries or len(ytm_entries.songs) + len(ytm_entries.music_videos) + len(ytm_entries.errors) == 0:
+        print_log("No valid entries found for export.")
+        exit(0)
+
+    # Print summary
+    print_log(f"Found {len(ytm_entries.songs)} songs, {len(ytm_entries.music_videos)} music videos")
+    print_log(f"Found {len(ytm_entries.errors)} errors")
+    print_log(f"Skipped {len(ytm_entries.skipped)} entries")
+
+    # Export to json
+    export_to_json(ytm_entries.songs, input_file, "sanitized-songs")
+    export_to_json(ytm_entries.music_videos, input_file, "sanitized-videos")
+    export_to_json(ytm_entries.errors, input_file, "sanitized-errors")
+    export_to_json(ytm_entries.skipped, input_file, "sanitized-skipped")
+
+    print_log("Processing complete. Songs and videos exported into separate files.")
+    print_log("Double check the music videos file since the processing is not fully deterministic, everybody names their songs in various formats, some might be unsupported.")
+    print_log("Check the errors and the skipped files - those tracks could not be processed, might have missing information. If you can fix them, you can re-process them again later")
