@@ -4,7 +4,7 @@ from datetime import datetime
 import re
 from typing import List, Optional
 
-from constants import RG_SPLIT_CHARS
+from objects.constants import RG_SPLIT_CHARS
 import argparse
 
 from objects.ytm_processed_track import YTMProcessedResults, YTMProcessedTrack
