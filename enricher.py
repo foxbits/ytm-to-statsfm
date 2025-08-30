@@ -100,8 +100,8 @@ if __name__ == "__main__":
     client_id = os.getenv('SPOTIFY_CLIENT_ID')
     client_secret = os.getenv('SPOTIFY_CLIENT_SECRET')
     market = os.getenv('CONN_COUNTRY')
-    search_results_limit = os.getenv('SPOTIFY_SEARCH_RESULTS_LIMIT', 5)
-    max_retries = os.getenv('SPOTIFY_MAX_RETRIES', 10)
+    search_results_limit = int(os.getenv('SPOTIFY_SEARCH_RESULTS_LIMIT', 5))
+    max_retries = int(os.getenv('SPOTIFY_MAX_RETRIES', 10))
 
     # Initialize Spotify enricher
     spoticlient = SpotifyClient(client_id, client_secret, market, search_results_limit, max_retries)
