@@ -107,7 +107,7 @@ def process_youtube_music_entries(input_file="watch-history.json", ignore_videos
                 processed.skipped.append(entry)
                 continue
 
-            if track.is_valid() and track.is_music_video():
+            if track.is_valid() and track.is_track():
                 track.artist = track.artist.replace(YT_MUSIC_TRACK_IDENTIFIER, "").strip()
 
             # Cleanup track names which use YouTube video format (only applies to videos watched on YT music, standard music tracks do not need it)
