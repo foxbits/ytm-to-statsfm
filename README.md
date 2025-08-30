@@ -29,11 +29,13 @@ This repo contains a set of python scripts that allow you to convert the YouTube
 3. The script will run (time depends on your history size). It will then output info regarding it's status.
 4. The script exports 3 files in the `output` folder, based on the original file name:
    1. `-songs.json` - the list of songs detected on YT Music listening history. These are 100% accurate ✅
-   2. `-videos.json` - the list of videos detected on your YT Music listening history; These can be or cannot be accurate 🤔
-   Since music videos naming can follow or not follow deterministic naming standards, it is recommended to do a double check and edit / correct the entries in this file before importing. For more details see Cafeats / #2
-   3. `-errors.json` - the list of entries in the history that cannot be processed ❌ 
-   The file contains entries in the original YT Music listening history format, therefore, if you think you can fix any of the entries, have a quick look, fix them and then use the corrected file as input for the `sanitizer script`
+   2. `-videos.json` - the list of videos detected on your YT Music listening history; These can be or cannot be accurate* 🤔
+      1. Since music videos naming can follow or not follow deterministic naming standards, it is recommended to do a double check and edit / correct the entries in this file before importing. 
+      2. For more details see Caveats / #2
+   3. `-errors.json` - the list of entries in the history that cannot be processed** ❌
+      1. The file contains entries in the original YT Music listening history format, therefore, if you think you can fix any of the entries, have a quick look, fix them and then use the corrected file as input for the `sanitizer script`
 5. At the end of this process you will have 1/2 json files that you can use for the next step
+
 
 ### Converting to Spotify format
 
