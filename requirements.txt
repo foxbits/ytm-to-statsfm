@@ -1,2 +1,3 @@
 python-dotenv==1.1.1
-spotipy>=2.22.0
+RapidFuzz==3.12.2
+spotipy==2.25.1
