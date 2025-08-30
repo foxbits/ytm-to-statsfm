@@ -57,25 +57,27 @@ def enrich_spotify_entries(entries: List[SpotifyStreamingEntry], enricher: Spoti
         
         print(f"Entry {i+1}/{total_entries}: Searching for '{entry.master_metadata_track_name}' by '{entry.master_metadata_album_artist_name}'")
         
-        # Search for track
-        track_info = enricher.search_track(entry.master_metadata_track_name, entry.master_metadata_album_artist_name)
-        
-        if track_info:
-            print(f"  ✓ Found: {track_info['name']} from album '{track_info['album_name']}' with duration '{track_info['duration_ms']}'")
+        # Search for track (catches not found / rate limiting / unknown ex)
+        try:
+            track_info = enricher.search_track(entry.master_metadata_track_name, entry.master_metadata_album_artist_name)
             
-            # Update entry with found information
-            entry.spotify_track_uri = f"spotify:track:{track_info['id']}"
-            entry.master_metadata_album_album_name = track_info['album_name']
-            entry.ms_played = track_info['duration_ms']  # Use actual duration instead of estimated
-            
-            enriched_count += 1
-        else:
-            print(f"  ✗ Not found on Spotify")
-            failed_count += 1
-        
-        # Add delay to respect rate limits
-        time.sleep(DEFAULT_SLEEP_SECONDS)
-    
+            if track_info:
+                print(f"  ✓ Found: {track_info['name']} from album '{track_info['album_name']}' with duration '{track_info['duration_ms']}'")
+                
+                # Update entry with found information
+                entry.spotify_track_uri = f"spotify:track:{track_info['id']}"
+                entry.master_metadata_album_album_name = track_info['album_name']
+                entry.ms_played = track_info['duration_ms']  # Use actual duration instead of estimated
+                
+                enriched_count += 1
+            else:
+                print(f"  ✗ Not found on Spotify")
+                failed_count += 1
+                raise Exception("Track not found")
+        except Exception as e:
+            print(f"Error enriching entry {i+1}/{total_entries}: {e}")
+            # TODO: Export into results array (CSV log?)
+
     print(f"\nEnrichment complete:")
     print(f"  Successfully enriched: {enriched_count}")
     print(f"  Failed to find: {failed_count}")
