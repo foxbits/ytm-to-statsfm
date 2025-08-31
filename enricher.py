@@ -132,6 +132,10 @@ if __name__ == "__main__":
     for entry in processed_entries.processed:
         entry.metadata.match_score = getattr(entry.metadata.tracks[0].match_score, score_tracks_by)
 
+        # save original details in metadata
+        entry.metadata.original_master_metadata_track_name = entry.master_metadata_track_name
+        entry.metadata.original_master_metadata_album_artist_name = entry.master_metadata_album_artist_name
+
         if entry.metadata.tracks and entry.metadata.match_score >= minimum_match_decision_score:
             # set metadata as matched
             entry.metadata.status = ProcessingStatus.OK
@@ -143,10 +147,7 @@ if __name__ == "__main__":
             entry.spotify_track_uri = entry.metadata.tracks[0].uri
             entry.ms_played = entry.metadata.tracks[0].duration_ms
 
-            # replace track details and save original
-            entry.metadata.original_master_metadata_track_name = entry.master_metadata_track_name
-            entry.metadata.original_master_metadata_album_artist_name = entry.master_metadata_album_artist_name
-
+            # replace track details with new data
             entry.master_metadata_track_name = entry.metadata.tracks[0].name
             entry.master_metadata_album_artist_name = entry.metadata.tracks[0].artist_name
             entry.master_metadata_album_album_name = entry.metadata.tracks[0].album_name
