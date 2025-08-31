@@ -1,4 +1,7 @@
 .env
 __pycache__
 .vscode
+.cache
+watch-history*
+Streaming_History*
 output/*
