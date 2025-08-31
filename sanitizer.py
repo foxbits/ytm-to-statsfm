@@ -4,7 +4,6 @@ import re
 from objects.constants import FORBIDDEN_STRINGS, RG_SPLIT_CHARS, YT_MUSIC_TRACK_IDENTIFIER
 import argparse
 
-from objects.process_metadata import ProcessingStatus
 from objects.ytm_processed_track import YTMProcessedResults, YTMProcessedTrack
 
 from utils.file_utils import export_to_json
@@ -148,15 +147,14 @@ if __name__ == "__main__":
         exit(0)
 
     # Print summary
-    print_log(f"Found {len(ytm_entries.songs)} songs, {len(ytm_entries.music_videos)} music videos")
+    print_log(f"Found {len(ytm_entries.songs)} songs, {len(ytm_entries.music_videos)} music videos (skipped {len(ytm_entries.skipped)} entries)")
     print_log(f"Found {len(ytm_entries.errors)} errors")
-    print_log(f"Skipped {len(ytm_entries.skipped)} entries")
 
     # Export to json
-    export_to_json(ytm_entries.songs, input_file, "sanitized-songs")
-    export_to_json(ytm_entries.music_videos, input_file, "sanitized-videos")
-    export_to_json(ytm_entries.errors, input_file, "sanitized-errors")
-    export_to_json(ytm_entries.skipped, input_file, "sanitized-skipped")
+    export_to_json(ytm_entries.songs, input_file, "sanitized.songs")
+    export_to_json(ytm_entries.music_videos, input_file, "sanitized.videos")
+    export_to_json(ytm_entries.errors, input_file, "sanitized.errors")
+    export_to_json(ytm_entries.skipped, input_file, "sanitized.skipped")
 
     print_log("Processing complete. Songs and videos exported into separate files.")
     print_log("Double check the music videos file since the processing is not fully deterministic, everybody names their songs in various formats, some might be unsupported.")

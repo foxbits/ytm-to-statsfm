@@ -57,7 +57,7 @@ if __name__ == "__main__":
     
     if spotify_entries:
         print_log(f"Successfully converted {len(spotify_entries)} YTM tracks to Spotify format")
-        export_to_json(spotify_entries, input_file, "spotify-format")
+        export_to_json(spotify_entries, input_file, "spotify.format")
         print_log("Conversion complete")
     else:
         print_log("No tracks converted or error occurred")

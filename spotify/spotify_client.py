@@ -108,7 +108,11 @@ class SpotifyClient:
     
     def search_track(self, track_name: str, artist_name: str) -> List[TrackInfo]:
         """
-        Search for track on Spotify API - returns first DEFAULT_RETURNED_RESULTS results
+        Search for track on Spotify API.
+        First tries to search by exact artist and track match. 
+        If the API returns a result, it marks the resulted tracks as exact_search_match and returns them.
+        In this case it is kindof safe to use the first result.
+        Otherwise it falls back to a broader search and  returns the first search_results_limit results
         """
         # Create cache key
         cache_key = f"{track_name.lower()}||{artist_name.lower()}"
@@ -131,9 +135,10 @@ class SpotifyClient:
             )
             
             tracks_raw = []
-            tracks = []
+            exact_match = False
             if results['tracks']['items'] and len(results['tracks']['items']) > 0:
                 tracks_raw = results['tracks']['items']
+                exact_match = True
             else:
                 # Try a broader search if exact match fails (with rate limiting)
                 query = f"{artist_name} {track_name}"
@@ -148,19 +153,20 @@ class SpotifyClient:
                 if results['tracks']['items'] and len(results['tracks']['items']) > 0:
                     tracks_raw = results['tracks']['items']
             
+            tracks = []
             if len(tracks_raw) > 0:
-
                 tracks = [TrackInfo(
                     id=track['id'],
                     name=track['name'],
                     album_name=track['album']['name'],
                     duration_ms=track['duration_ms'],
-                    artist_name=", ".join(artist['name'] for artist in track['artists']) if track['artists'] else artist_name
+                    artist_name=", ".join(artist['name'] for artist in track['artists']) if track['artists'] else artist_name,
+                    exact_search_match=exact_match
                 ) for track in tracks_raw]
                 
-                # Cache the result
-                self.cache[cache_key] = tracks
-                return tracks
+            # Cache the result
+            self.cache[cache_key] = tracks
+            return tracks
 
         except Exception as e:
             print_log(f"Error searching for track '{track_name}' by '{artist_name}': {e}")

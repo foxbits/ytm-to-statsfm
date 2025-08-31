@@ -6,7 +6,7 @@ from typing import List, Optional
 from utils.simple_logger import print_log
 
 
-def export_to_json(data: List[object], input_filename: str, suffix="processed") -> Optional[str]:
+def export_to_json(data: List[object], input_filename: str, suffix="processed", separator=".") -> Optional[str]:
     """
     Export filtered data to a JSON file with optional suffix
     """
@@ -20,7 +20,7 @@ def export_to_json(data: List[object], input_filename: str, suffix="processed") 
     extension = os.path.splitext(filename)[1]
     output_dir = "output"
     os.makedirs(output_dir, exist_ok=True)
-    output_file = os.path.join(output_dir, f"{os.path.basename(base_name)}-{suffix}{extension}")
+    output_file = os.path.join(output_dir, f"{os.path.basename(base_name)}{separator}{suffix}{extension}")
     
     try:
         # Convert objects to dictionaries for JSON serialization
