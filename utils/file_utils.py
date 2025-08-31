@@ -5,6 +5,17 @@ from typing import List, Optional
 
 from utils.simple_logger import print_log
 
+def generate_output_filename(input_filename: str, suffix="processed", separator=".") -> str:
+    """
+    Append a suffix to the input filename before the file extension.
+    """
+    filename = os.path.split(input_filename)[-1]
+    base_name = os.path.splitext(filename)[0]
+    extension = os.path.splitext(filename)[1]
+    output_dir = "output"
+    os.makedirs(output_dir, exist_ok=True)
+    output_file = os.path.join(output_dir, f"{os.path.basename(base_name)}{separator}{suffix}{extension}")
+    return output_file
 
 def export_to_json(data: List[object], input_filename: str, suffix="processed", separator=".") -> Optional[str]:
     """
@@ -15,13 +26,8 @@ def export_to_json(data: List[object], input_filename: str, suffix="processed", 
         return None
 
     # Create output filename
-    filename = os.path.split(input_filename)[-1]
-    base_name = os.path.splitext(filename)[0]
-    extension = os.path.splitext(filename)[1]
-    output_dir = "output"
-    os.makedirs(output_dir, exist_ok=True)
-    output_file = os.path.join(output_dir, f"{os.path.basename(base_name)}{separator}{suffix}{extension}")
-    
+    output_file = generate_output_filename(input_filename, suffix, separator)
+
     try:
         # Convert objects to dictionaries for JSON serialization
         json_data = [track.to_dict() for track in data]
@@ -46,11 +52,7 @@ def export_to_csv(data: List[str], headerRow: str, input_filename: str, suffix="
         return None
 
     # Create output filename
-    filename = os.path.split(input_filename)[-1]
-    base_name = os.path.splitext(filename)[0]
-    output_dir = "output"
-    os.makedirs(output_dir, exist_ok=True)
-    output_file = os.path.join(output_dir, f"{os.path.basename(base_name)}{separator}{suffix}.csv")
+    output_file = generate_output_filename(input_filename, suffix, separator)
 
     try:
         # Write filtered entries to output file
@@ -74,11 +76,7 @@ def export_to_csv(contents: str, input_filename: str, suffix="processed", separa
         return None
     
     # Create output filename
-    filename = os.path.split(input_filename)[-1]
-    base_name = os.path.splitext(filename)[0]
-    output_dir = "output"
-    os.makedirs(output_dir, exist_ok=True)
-    output_file = os.path.join(output_dir, f"{os.path.basename(base_name)}{separator}{suffix}.csv")
+    output_file = generate_output_filename(input_filename, suffix, separator)
 
     try:
         # Write filtered entries to output file
