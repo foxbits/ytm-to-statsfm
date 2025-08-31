@@ -1,9 +1,10 @@
 import argparse
 import json
 import os
+import csv
 from typing import List
 from spotify.spotify_listening_history import SpotifyStreamingEntry
-from utils.file_utils import export_to_csv
+from utils.file_utils import export_to_csv, generate_output_filename
 from utils.simple_logger import print_log
 
 
@@ -23,6 +24,18 @@ def read_spotify_entries(input_file: str) -> List[SpotifyStreamingEntry]:
         return []
     except json.JSONDecodeError:
         print_log(f"Error: Invalid JSON in {input_file}")
+        return []
+    except Exception as e:
+        print_log(f"Error processing file: {e}")
+        return []
+    
+def read_csv(input_file: str) -> List[str]:
+    try:
+        with open(input_file, 'r', encoding='utf-8') as file:
+            reader = csv.reader(file)
+            return [row for row in reader]
+    except FileNotFoundError:
+        print_log(f"Error: {input_file} not found")
         return []
     except Exception as e:
         print_log(f"Error processing file: {e}")
@@ -97,10 +110,15 @@ if __name__ == "__main__":
             exit(1)
         
         # Build CSV with choices
-        csv = build_choice_report_clear(entries, score_tracks_by)
+        report = build_choice_report_clear(entries, score_tracks_by)
 
         # Export to file
-        export_to_csv(csv, input_file, suffix="validator")
-    
+        export_to_csv(report, input_file, suffix="validator")
+
     if do_import:
+        # if import + export reuse exported file
+        if do_export:
+            input_file = generate_output_filename(input_file, suffix="validator")
+
         # Read CSV file
+        rows = read_csv(input_file)
