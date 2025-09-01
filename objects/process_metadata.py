@@ -9,6 +9,7 @@ class ProcessingStatus(Enum):
     ERROR = "ERROR"
     SKIPPED = "SKIPPED"
     DOUBT = "DOUBT"
+    FIXED = "FIXED"
 
 class YTMProcessingMetadata:
     def __init__(self, status: ProcessingStatus = ProcessingStatus.OK, status_message: str = "", is_video: bool = False,

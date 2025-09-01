@@ -1,4 +1,4 @@
-from objects.process_metadata import SpotifyProcessingMetadata
+from objects.process_metadata import ProcessingStatus, SpotifyProcessingMetadata
 from objects.ytm_processed_track import YTMProcessedTrack
 from spotify.constants import SPOTIFY_URI_PREFIX
 
@@ -68,6 +68,26 @@ class SpotifyStreamingEntry:
 
     def has_spotify_data(self):
         return bool(self.spotify_track_uri) and self.spotify_track_uri.startswith(SPOTIFY_URI_PREFIX)
+    
+    def set_info_from_track(self, track_index: int):
+        if not self.metadata or not self.metadata.tracks or track_index < 0 or track_index >= len(self.metadata.tracks):
+            raise ValueError("Invalid track index or metadata not available")
+
+        # save new track details
+        self.spotify_track_uri = self.metadata.tracks[track_index].uri
+        self.ms_played = self.metadata.tracks[track_index].duration_ms
+
+        # replace track details with new data
+        self.master_metadata_track_name = self.metadata.tracks[track_index].name
+        self.master_metadata_album_artist_name = self.metadata.tracks[track_index].artist_name
+        self.master_metadata_album_album_name = self.metadata.tracks[track_index].album_name
+    
+    def set_status_as_matched(self, status: ProcessingStatus = ProcessingStatus.OK, track_index: int = 0):
+        self.metadata.status = status
+        self.metadata.status_message = f"Trusted match with score {self.metadata.match_score:.2f}"
+        
+        if self.metadata.tracks[track_index].exact_search_match:
+            self.metadata.status_message += " (exact API search match, not calculated)"
 
     @classmethod
     def from_ytm_track(cls, ytm_track: YTMProcessedTrack, additional_data: SpotifyAdditionalYTMData = None):
@@ -135,3 +155,4 @@ class SpotifyStreamingEntry:
         entry.incognito_mode = data.get("incognito_mode", False)
         entry.metadata = SpotifyProcessingMetadata.from_dict(data.get("metadata", {}))
         return entry
+    

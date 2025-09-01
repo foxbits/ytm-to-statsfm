@@ -3,8 +3,9 @@ import json
 import os
 import csv
 from typing import List
+from objects.process_metadata import ProcessingStatus
 from spotify.spotify_listening_history import SpotifyStreamingEntry
-from utils.file_utils import export_to_csv, generate_output_filename
+from utils.file_utils import export_to_csv, export_to_json, generate_output_filename
 from utils.simple_logger import print_log
 
 
@@ -33,7 +34,7 @@ def read_csv(input_file: str) -> List[str]:
     try:
         with open(input_file, 'r', encoding='utf-8') as file:
             reader = csv.reader(file)
-            return [row for row in reader]
+            return [row for row in reader if row and any(cell.strip() for cell in row)]
     except FileNotFoundError:
         print_log(f"Error: {input_file} not found")
         return []
@@ -86,6 +87,30 @@ def build_choice_report_clear(entries: List[SpotifyStreamingEntry], score_by: st
 
     return report
 
+def import_choices(entries: List[SpotifyStreamingEntry], choices: List[str]):
+    if len(choices) != len(entries) + 1:  # +1 for header
+        print_log(f"Error: Expected {len(entries) + 1} choices, got {len(choices)}")
+        return
+
+    for i in range(len(entries)):
+        entry = entries[i]
+        choice_row = choices[i + 1]  # Skip header
+        try:
+            choice = int(choice_row[3])
+            if choice != -1 and (choice < 1 or choice > len(entry.metadata.tracks)):
+                raise ValueError(f"Choice out of range")
+        except (ValueError, IndexError):
+            print_log(f"Error: Invalid choice in row {i + 1}: '{choice_row[3]}'. Make sure it's a valid track number")
+            exit(1)
+        
+        if choice  == -1:
+            print_log(f"Row {i + 1} was marked as no valid choices. It will be skipped.")
+            continue
+
+        entry.set_status_as_matched(ProcessingStatus.FIXED, choice - 1)
+        entry.set_info_from_track(choice - 1)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Enrich Spotify streaming entries with metadata from Spotify API")
     parser.add_argument("--file", required=True, help="Input JSON file with Spotify streaming entries")
@@ -100,6 +125,8 @@ if __name__ == "__main__":
     
     # Get scoring settings
     score_tracks_by = os.getenv('SCORE_TRACKS_BY', 'equal_weight')
+
+    entries = []
     
     if do_export:
         # Read Spotify entries
@@ -115,10 +142,26 @@ if __name__ == "__main__":
         # Export to file
         export_to_csv(report, input_file, suffix="validator")
 
+    # Wait for user input to continue
+    print("Please make sure you have filled the choices in the 'validator' CSV.\n"
+          "Once that is done, press Enter to continue with importing them...\n"
+          "(make sure that both the original json and the CSV are in the same folder)")
+    input()
+
     if do_import:
-        # if import + export reuse exported file
-        if do_export:
-            input_file = generate_output_filename(input_file, suffix="validator")
+        # csv file uses name convention <input-file>.validator.csv
+        csv_file = generate_output_filename(input_file, suffix="validator", new_extension=".csv")
 
         # Read CSV file
-        rows = read_csv(input_file)
+        rows = read_csv(csv_file)
+
+        # Read json original entries (if export done, they are already read)
+        if not do_export:
+            entries = read_spotify_entries(input_file)
+        
+        # import the choices (with range validation)
+        import_choices(entries, rows)
+
+        # save back to json
+        export_to_json(entries, input_file, suffix="validated")
+

@@ -5,7 +5,7 @@ from typing import List, Optional
 
 from utils.simple_logger import print_log
 
-def generate_output_filename(input_filename: str, suffix="processed", separator=".") -> str:
+def generate_output_filename(input_filename: str, suffix="processed", separator=".", new_extension = None) -> str:
     """
     Append a suffix to the input filename before the file extension.
     """
@@ -14,7 +14,7 @@ def generate_output_filename(input_filename: str, suffix="processed", separator=
     extension = os.path.splitext(filename)[1]
     output_dir = "output"
     os.makedirs(output_dir, exist_ok=True)
-    output_file = os.path.join(output_dir, f"{os.path.basename(base_name)}{separator}{suffix}{extension}")
+    output_file = os.path.join(output_dir, f"{os.path.basename(base_name)}{separator}{suffix}{new_extension or extension}")
     return output_file
 
 def export_to_json(data: List[object], input_filename: str, suffix="processed", separator=".") -> Optional[str]:
