@@ -128,20 +128,23 @@ This extra data (the most important being the spotify track id) is identified th
 
 1. Run `python enricher.py --file output\\watch-history.sanitized.*.spotify.format.json`
    1. Run it with the `songs` and/or `videos` files
-   2. Alternatively you can run it with any file that follows the Spotify format defined in [`objects/spotify_listening_history.py`](objects/spotify_listening_history.py) if you use custom files
+   2. Alternatively you can run it with any file that follows the Spotify format defined in [`spotify/spotify_listening_history.py`](spotify/spotify_listening_history.py) if you use custom files
 2. Wait for it to run. If your file data is big, you will encounter Spotify Rate limiting (180 searches / minute) so it might take a while.
 3. You will obtain a new set of json files:
-   1. `<your-file>.enriched.matched.json`
+   1. `<your-file>.enriched.matched.json` ✅
       - contains all the successfully matched tracks with metadata; a track is matched if:
          - has a matching score with the top result above `SCORE_TRACKS_WEIGHT`; 
          - spotify returns them as exact matches (results for exact track name and artist)
          - you can see the score in the `metadata.match_score`
       - `tracks` array populated with top spotify results
-   2. `<your-file>.enriched.doubt.json`
-      - contains the tracks that cannot be safely matched with a result
-   3. `<your-file>.enriched.errors.json`
+      - this file can be directly used as final ✅
+   2. `<your-file>.enriched.doubt.json` 🤔
+      - contains the tracks that cannot be safely matched with a result automatically
+      - they need manual validation
+      - this file is used in next step
+   3. `<your-file>.enriched.errors.json` ❌
       - contains all the tracks that ended in error either when communicating with the Spotify API (e.g. rate limiting retries ending, unknown errors) or in not being able to identify any tracks
-      - you can inspect these errors and eventually do some edits on it and re-process
+      - you can inspect these errors and eventually do some edits on it and re-process (restart this flow)
 
 
 
