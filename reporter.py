@@ -149,9 +149,8 @@ if __name__ == "__main__":
 
     # Wait for user input to continue
     print("Please make sure you have filled the choices in the 'validator' CSV.\n"
-          "Once that is done, press Enter to continue with importing them...\n"
           "(make sure that both the original json and the CSV are in the same folder)")
-    input()
+    input("Press Enter to continue once that is done...")
 
     if do_import:
         # csv file uses name convention <input-file>.validator.csv

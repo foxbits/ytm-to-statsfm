@@ -17,7 +17,7 @@ def sanitize_video_track_info(track_name: str, artist_name: str) -> tuple[str, s
     and extracting artist information from the title.
     
     Returns:
-        tuple: (sanitized_track_name, sanitized_artist_name)
+        tuple: (track_name, artist_name)
     """
     original_channel = artist_name
     
@@ -151,10 +151,10 @@ if __name__ == "__main__":
     print_log(f"Found {len(ytm_entries.errors)} errors")
 
     # Export to json
-    export_to_json(ytm_entries.songs, input_file, "sanitized.songs")
-    export_to_json(ytm_entries.music_videos, input_file, "sanitized.videos")
-    export_to_json(ytm_entries.errors, input_file, "sanitized.errors")
-    export_to_json(ytm_entries.skipped, input_file, "sanitized.skipped")
+    export_to_json(ytm_entries.songs, input_file, "songs")
+    export_to_json(ytm_entries.music_videos, input_file, "videos")
+    export_to_json(ytm_entries.errors, input_file, "errors")
+    export_to_json(ytm_entries.skipped, input_file, "skipped")
 
     print_log("Processing complete. Songs and videos exported into separate files.")
     print_log("Double check the music videos file since the processing is not fully deterministic, everybody names their songs in various formats, some might be unsupported.")
