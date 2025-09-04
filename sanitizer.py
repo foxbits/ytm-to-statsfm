@@ -132,7 +132,7 @@ if __name__ == "__main__":
     # Arguments
     parser = argparse.ArgumentParser(description="Process YouTube Music history")
     parser.add_argument("--file", default="watch-history.json", help="Input file path (default: watch-history.json)")
-    parser.add_argument("--ignore-videos", action="store_true", help="Ignore videos watched on YouTube Music, process only songs (default: False)")
+    parser.add_argument("--ignore-videos", action="store_true", help="Specify in order to ignore videos watched on YouTube Music and process only songs")
     args = parser.parse_args()
     
     input_file = args.file

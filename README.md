@@ -4,11 +4,11 @@ It is based on a multi-step process:
 1. data sanitization (automatic)
 2. data conversion to the Spotify listening history format (automatic)
 3. data enrichment using the official Spotify Search API (to find to actual spotify track ids, which are mandatory) (automatic)
-4. track score analysis in case of multiple track matches in a single search (semi-automatic)
-  - nobody wants to import in their listening history unwanted tracks, and since YTM provides only artist & track name, the match with Spotify is, most of the times, non-deterministic (you might have encountered this with playlist converters)
-  - if track API search result (from Spotify) is exact OR if artist & track name text fuzzy match score is higher than a defined threshold => the track considered a match (automatic)
-  - otherwise, a report is generated which requires manual review to select the right track from a list of returned results (manual)
-  - in this case, the process is able to import a manually reviewed file and then process it normally (automatic)
+4. matched track score analysis in case of multiple track matches in a single search (semi-automatic)
+     - nobody wants to import in their listening history unwanted tracks, and since YTM provides only artist & track name, the match with Spotify is, most of the times, non-deterministic (you might have encountered this with playlist converters)
+     - if track API search result (from Spotify) is exact OR if artist & track name text fuzzy match score is higher than a defined threshold => the track considered a match (automatic)
+     - otherwise, a report is generated which requires manual review to select the right track from a list of returned results (manual)
+     - in this case, the process is able to import a manually reviewed file and then process it normally (automatic)
 
 Each step of the process is available as a standalone script, in order to allow you to run / re-do each step manually, or as part of an automated end-to-end script.
 
@@ -20,6 +20,7 @@ Each step of the process is available as a standalone script, in order to allow 
   - [2.1. Data Sanitization](#21-data-sanitization)
   - [2.2 Data Conversion to Spotify listening history format](#22-data-conversion-to-spotify-listening-history-format)
   - [2.3 Data enrichment using the official Spotify Search API](#23-data-enrichment-using-the-official-spotify-search-api)
+  - [2.4 Matched track score analysis](#24-matched-track-score-analysis)
   - [Example of full flow](#example-of-full-flow)
 - [Caveats / Troubleshooting](#caveats--troubleshooting)
 - [Example of the same song in the 2 different formats](#example-of-the-same-song-in-the-2-different-formats)
@@ -128,21 +129,56 @@ This extra data (the most important being the spotify track id) is identified th
 
 1. Run `python enricher.py --file output\\watch-history.sanitized.*.spotify.format.json`
    1. Run it with the `songs` and/or `videos` files
-   2. Alternatively you can run it with any file that follows the Spotify format defined in [`objects/spotify_listening_history.py`](objects/spotify_listening_history.py) if you use custom files
+   2. Alternatively you can run it with any file that follows the Spotify format defined in [`spotify/spotify_listening_history.py`](spotify/spotify_listening_history.py) if you use custom files
 2. Wait for it to run. If your file data is big, you will encounter Spotify Rate limiting (180 searches / minute) so it might take a while.
 3. You will obtain a new set of json files:
-   1. `<your-file>.enriched.matched.json`
+   1. `<your-file>.enriched.matched.json` ✅
       - contains all the successfully matched tracks with metadata; a track is matched if:
          - has a matching score with the top result above `SCORE_TRACKS_WEIGHT`; 
          - spotify returns them as exact matches (results for exact track name and artist)
          - you can see the score in the `metadata.match_score`
       - `tracks` array populated with top spotify results
-   2. `<your-file>.enriched.doubt.json`
-      - contains the tracks that cannot be safely matched with a result
-   3. `<your-file>.enriched.errors.json`
+      - this file can be directly used as final ✅
+   2. `<your-file>.enriched.doubt.json` 🤔
+      - contains the tracks that cannot be safely matched with a result automatically
+      - they need manual validation
+      - this file is used in next step
+   3. `<your-file>.enriched.errors.json` ❌
       - contains all the tracks that ended in error either when communicating with the Spotify API (e.g. rate limiting retries ending, unknown errors) or in not being able to identify any tracks
-      - you can inspect these errors and eventually do some edits on it and re-process
+      - you can inspect these errors and eventually do some edits on it and re-process (restart this flow)
 
+
+### 2.4 Matched track score analysis
+
+In the previous step, there is a `.doubt.json` file generated which contains tracks, in the Spotify listening history format (but with incomplete data), that have search results that have been returned by Spotify but could not be considered as safe matches, according to the  `MINIMUM_MATCH_DECISION_SCORE` setting.
+
+This step facilitates two functions: 
+- exporting a **CSV report** which contains, as rows, all the entries from the listening history that could not be safely matched, as well as a column with all the potential matches (numbered list) and their details (score, artist, track):
+  - **id**: incremental number, id of each row (corresponding to the id of the ordered tracks from the json in order of appeareance)
+  - **original_track**: the original track name as found in the YouTube Music listening history
+  - **original_artist**: the original artist name as found in the YouTube Music listening history
+  - **your_choice**: 
+    - a number from the `choices` column representing the track number from the possible matches list that you consider a correct match
+    - `1` <= `number of possible matches` <= `SPOTIFY_SEARCH_RESULTS_LIMIT`
+    - use `-1` if you consider that none of the matches are correct and the song should not be used in the listening history; if no result from the list seems correct, it might mean that the song does not exist in Spotify
+  - **choices**: a list of songs, one per row, that have been returned by Spotify as potential matches for the current track in the format `<id>. (<score>)<artist> - <track>`
+- importing the same **CSV report** with the `your_choice` column correctly populated for all rows 
+
+
+How to use it:
+
+1. Run `python reporter.py --file output\\<your-file>.enriched.doubt.json --export --import`
+   - `--file` flag allows specifying the json file to process; this should be the `.doubt.json` file generated at previous step
+   - `--export` flag specifies to the script to execute the export step
+   - `--import` flag specifies to the script to execute the import step (if both are specified, first the export is done, then the script waits for user input, then the import is done);
+2. The script will generate a CSV file (`output\\<your-file>.enriched.doubt.validator.csv`) in the format described above and then it will wait for user input (RETURN key, do not press it!)
+3. The user (you) must open the CSV file and fill in, for all rows, the `your_choice` column with a valid number
+4. The user (you) must press the RETURN key in the script window; the script now will read back the CSV and validate the user's (your) choices
+   - make sure you have filled in the CSV correctly, otherwise there will be errors
+   - make sure that the json file and the csv file are in the same directory (if running the script manually or on custom files / directories)
+   - do not change the order of rows from the CSV; do not change the order of rows from the JSON; do not change the order of tracks from the JSON
+5.  The script will generate a new file `output\\<your-file>.enriched.doubt.validated.json`
+    - this file can be directly used as final ✅
 
 
 ### Example of full flow
@@ -175,17 +211,24 @@ python enricher.py --file output\\watch-history-small.sanitized.videos.spotify.f
 => output\\watch-history-small.sanitized.videos.spotify.format.enricher.doubt.json
 => output\\watch-history-small.sanitized.videos.spotify.format.enricher.errors.json
 
-#6 - manually validate entries with doubts
+#6 - generate the CSV report for the songs and/or videos in doubt, fill it in, then import it back
+python reporter.py --file output\\watch-history-small.sanitized.songs.spotify.format.enricher.doubt.json --import --export
+=> output\\watch-history-small.sanitized.songs.spotify.format.enricher.doubt.validator.csv
+=> output\\watch-history-small.sanitized.songs.spotify.format.enricher.doubt.validated.json
+
+python reporter.py --file output\\watch-history-small.sanitized.videos.spotify.format.enricher.doubt.json --import --export
+=> output\\watch-history-small.sanitized.videos.spotify.format.enricher.doubt.validator.csv
+=> output\\watch-history-small.sanitized.videos.spotify.format.enricher.doubt.validated.json
 
 #7 - use the successfully created files
+- output\\watch-history-small.sanitized.songs.spotify.format.enricher.matched.json
 - output\\watch-history-small.sanitized.videos.spotify.format.enricher.matched.json
-- the processed doubt files
-- any errored files that you re-process
+- output\\watch-history-small.sanitized.songs.spotify.format.enricher.doubt.validated.json
+- output\\watch-history-small.sanitized.videos.spotify.format.enricher.doubt.validated.json
+- any errored files that you re-process manually
 
 ```
 
-- test if one fails
-- test with video
 
 ## Caveats / Troubleshooting
 
