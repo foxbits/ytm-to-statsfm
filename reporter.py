@@ -87,10 +87,12 @@ def build_choice_report_clear(entries: List[SpotifyStreamingEntry], score_by: st
 
     return report
 
-def import_choices(entries: List[SpotifyStreamingEntry], choices: List[str]):
+def import_choices(entries: List[SpotifyStreamingEntry], choices: List[str]) -> List[SpotifyStreamingEntry]:
     if len(choices) != len(entries) + 1:  # +1 for header
         print_log(f"Error: Expected {len(entries) + 1} choices, got {len(choices)}")
-        return
+        return []
+
+    output_entries = []
 
     for i in range(len(entries)):
         entry = entries[i]
@@ -109,6 +111,9 @@ def import_choices(entries: List[SpotifyStreamingEntry], choices: List[str]):
 
         entry.set_status_as_matched(ProcessingStatus.FIXED, choice - 1)
         entry.set_info_from_track(choice - 1)
+        output_entries.append(entry)
+
+    return output_entries
 
 
 if __name__ == "__main__":
@@ -160,8 +165,8 @@ if __name__ == "__main__":
             entries = read_spotify_entries(input_file)
         
         # import the choices (with range validation)
-        import_choices(entries, rows)
+        output_entries = import_choices(entries, rows)
 
         # save back to json
-        export_to_json(entries, input_file, suffix="validated")
+        export_to_json(output_entries, input_file, suffix="validated")
 

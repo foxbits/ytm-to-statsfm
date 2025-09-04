@@ -76,7 +76,7 @@ def export_to_csv(contents: str, input_filename: str, suffix="processed", separa
         return None
     
     # Create output filename
-    output_file = generate_output_filename(input_filename, suffix, separator)
+    output_file = generate_output_filename(input_filename, suffix, separator, new_extension=".csv")
 
     try:
         # Write filtered entries to output file
