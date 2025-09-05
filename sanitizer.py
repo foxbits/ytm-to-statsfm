@@ -153,7 +153,7 @@ if __name__ == "__main__":
     # Export to json
     export_to_json(ytm_entries.songs, input_file, "songs")
     export_to_json(ytm_entries.music_videos, input_file, "videos")
-    export_to_json(ytm_entries.errors, input_file, "errors")
+    export_to_json(ytm_entries.errors, input_file, "errors", parent_directory="output\\errors")
     export_to_json(ytm_entries.skipped, input_file, "skipped")
 
     print_log("Processing complete. Songs and videos exported into separate files.")

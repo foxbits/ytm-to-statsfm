@@ -1,16 +1,16 @@
-This repo contains a set of python scripts that allow you to convert the YouTube Music listening history format (songs only) into Spotify listening history format (with some details using default values), making it importable into [stats.fm](http://stats.fm) and other applications that use this format. At the end of this page there is an example for the same song in the two different formats.
+This repo contains a set of python scripts that allow you to **convert** the **YouTube Music listening history** format (songs only) into **Spotify listening history** format (with some details using default values), making it importable into [stats.fm](http://stats.fm) and other applications that use this format. At the end of this page there is an example for the same song in the two different formats.
 
 It is based on a multi-step process:
 1. data sanitization (automatic)
 2. data conversion to the Spotify listening history format (automatic)
 3. data enrichment using the official Spotify Search API (to find to actual spotify track ids, which are mandatory) (automatic)
 4. matched track score analysis in case of multiple track matches in a single search (semi-automatic)
-     - nobody wants to import in their listening history unwanted tracks, and since YTM provides only artist & track name, the match with Spotify is, most of the times, non-deterministic (you might have encountered this with playlist converters)
+     - nobody wants to import in their listening history unwanted tracks, and since YTM provides only artist & track name, the match with Spotify is non-deterministic (you might have encountered this with playlist converters)
      - if track API search result (from Spotify) is exact OR if artist & track name text fuzzy match score is higher than a defined threshold => the track considered a match (automatic)
      - otherwise, a report is generated which requires manual review to select the right track from a list of returned results (manual)
      - in this case, the process is able to import a manually reviewed file and then process it normally (automatic)
 
-Each step of the process is available as a standalone script, in order to allow you to run / re-do each step manually (see [2. Processing the History](#2-processing-the-history)), or as part of an automated all-in-one end-to-end script.
+Each step of the process is available as a standalone script, in order to allow you to run / re-do each step manually (see [2. Processing the History (Individual Scripts)](#2-processing-the-history-individual-scripts)), or as part of an automated all-in-one end-to-end script (see [3. Processing the History (All In One)](#3-processing-the-history-all-in-one)).
 
 - [1. Pre-requisites](#1-pre-requisites)
   - [1.1. Exporting your YouTube Music Data](#11-exporting-your-youtube-music-data)
@@ -51,7 +51,7 @@ Each step of the process is available as a standalone script, in order to allow 
 
 Create a `.env` file and fill in the environment variables as identified in [`.env.example`](.env.example), according to your needs and as described below.
 
-These env vars are used to connect to the Spotify API:
+The following env vars are used to connect to the Spotify API:
 1. Make sure you have a Spotify Developer account and an application to use for this part
    1. Go to https://developer.spotify.com/dashboard, login and create an app
    2. Put in a name and description (like ytm-history-converter)
@@ -66,7 +66,7 @@ These env vars are used to connect to the Spotify API:
 4. The API search will use the `CONN_COUNTRY` value for the market to search for (in order to display results from where you actually use Spotify, not default). Set it o your country code (A-2 from [here](https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes))
 
 
-These env vars are used for track score matching:
+The following env vars are used for track score matching:
 1. `SCORE_TRACKS_BY` - choose how the track name and title weight in deciding higher scores. The available options are:
    1. `track_score` - only use the track title score
    2. `artist_score` - only use artist name score
@@ -78,11 +78,13 @@ These env vars are used for track score matching:
 2. `MINIMUM_MATCH_DECISION_SCORE` - the minimum match percentage (0-1) to consider a track fully compatible / matched; if a track scores higher or equal to this, there's no doubt - it's considered fully matching! it will not be outputed in the doubts list. Choose a high number, `0.9` should fit well enough
 
 
-These env vars are used to populate some default fields that are required in Spotify but not available in YTM
-1. `MS_PLAYED` - the milliseconds played (number). YT Music listening history does not have a duration of the time played, therefore a default is needed. I recommend the usual song average of 3 minutes, which is 180s therefore `180000` (ms). This will be replaced if a match is found at next step, but is used as default
+The following env vars are used to populate some default fields that are required in Spotify but not available in YTM
+1. `MS_PLAYED` - the milliseconds played (number). YT Music listening history does not have a duration of the time played, therefore a default is needed. I recommend the usual song average of 3 minutes, which is 180s therefore `180000` (ms). This will be replaced if a match is found at next step from the Spotify API, but is used as default
 2. `CONN_COUNTRY` - your country code (A-2 from [here](https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes))
 3. `PLATFORM` - Put your own platform (needs to be supported by spotify), or use `ios`.
 4. `IP_ADDR` - your ip address - use some random one or add your actual ip address (https://www.whatsmyip.org)
+
+
 
 ## 2. Processing the History (Individual Scripts)
 
@@ -95,15 +97,15 @@ These env vars are used to populate some default fields that are required in Spo
    1. This script uses by default as input file a `watch-history.json` available in the same folder; you can use a different file if you want, by specifying `--file your-file.json`
 3. The script will run (time depends on your history size). It will then output info regarding its status.
 4. The script exports 3 files in the `output` folder, based on the original file name:
-   1. `.songs.json` - the list of songs detected on YT Music listening history. These are 100% accurate ✅
-   2. `.videos.json` - the list of music videos detected on your YT Music listening history; These can be or cannot be accurate when converted to tracks 🤔
-      - if you run the program with `--ignore-videos` flag, then the music videos are not processed and are put in a `.skipped.json` list
+   1. `*.songs.json` - the list of songs detected on YT Music listening history. These are 100% accurate ✅
+   2. `*.videos.json` - the list of music videos detected on your YT Music listening history; These can be or cannot be accurate when converted to tracks 🤔
+      - if you run the program with `--ignore-videos` flag, then the music videos are not processed and are put in a `*.skipped.json` list
       - Since music videos naming can follow or not follow deterministic naming standards, it is recommended to do a double check and edit / correct the entries in this file before importing; otherwise, you will have to review the matchings anyways in the final step
       - For more details see #2 from [Caveats / Troubleshooting]((#4-caveats--troubleshooting))
-   3. `.errors.json` - the list of entries in the history that cannot be processed ❌
-      - The file contains entries in the original YT Music listening history format, therefore, if you think you can fix any of the entries, have a quick look, fix them and then use the corrected file as input for the `sanitizer script` (e.g. restart the process but with the corrected file);
-      - Most of the cases the error is due to missing artist name / track name in the YTM export, and you have to put them manually
+   3. `\\errors\\*.errors.json` - the list of entries in the history that cannot be processed ❌
+      - See [4. Caveats / Troubleshooting](#4-caveats--troubleshooting) to understand how to reprocess errors
 5. At the end of this process you will have 1/2/3 json files that you can use for the next step
+
 
 
 ### 2.2 Data Conversion to Spotify listening history format
@@ -122,6 +124,7 @@ Do the following steps:
 2. You will obtain a new json file named `<your-file>.spotify.json` in the `output` directory
 3. This full file follows the exact Spotify listening history format, but is populated only with the data available in YTM history (artist name, track name, timestamp) and with the default parameters (some from env vars). You most likely cannot import this file in many places. The full data is populated in next step (the enrichment).
 
+
 ### 2.3 Data enrichment using the official Spotify Search API
 
 Since YTM does provide only the artist name, track title and timestamp when played, a lot of the specific Spotify data is missing, most importantly the Spotify Track ID, the Album Name and the actual duration of the track.
@@ -133,25 +136,25 @@ This extra data (the most important being the spotify track id) is identified th
    2. Alternatively you can run it with any file that follows the Spotify format defined in [`spotify/spotify_listening_history.py`](spotify/spotify_listening_history.py) if you use custom files
 2. Wait for it to run. If your file data is big, you will encounter Spotify Rate limiting (180 searches / minute) so it might take a while.
 3. You will obtain a new set of json files:
-   1. `<your-file>.rich.ok.json` ✅
+   1. `output\\ok\\<your-file>.rich.ok.json` ✅
       - contains all the successfully matched tracks with metadata; a track is matched if:
          - has a matching score with the top result above `SCORE_TRACKS_WEIGHT`; 
          - spotify returns them as exact matches (results for exact track name and artist)
          - you can see the score in the `metadata.match_score`
       - `tracks` array populated with top spotify results
       - this file can be directly used as final ✅
-   2. `<your-file>.rich.doubt.json` 🤔
+   2. `output\\<your-file>.rich.doubt.json` 🤔
       - contains the tracks that cannot be safely matched with a result automatically
       - they need manual validation
       - this file is used in next step
-   3. `<your-file>.rich.errors.json` ❌
+   3. `output\\errors\\<your-file>.rich.errors.json` ❌
       - contains all the tracks that ended in error either when communicating with the Spotify API (e.g. rate limiting retries ending, unknown errors) or in not being able to identify any tracks
-      - you can inspect these errors and eventually do some edits on it and re-process (restart this flow)
+      - See [4. Caveats / Troubleshooting](#4-caveats--troubleshooting) to understand how to reprocess errors
 
 
 ### 2.4 Matched track score analysis
 
-In the previous step, there is a `.doubt.json` file generated which contains tracks, in the Spotify listening history format (but with incomplete data), that have search results that have been returned by Spotify but could not be considered as safe matches, according to the  `MINIMUM_MATCH_DECISION_SCORE` setting.
+In the previous step, there is a `*.doubt.json` file generated which contains tracks, in the Spotify listening history format (but with incomplete data), that have search results that have been returned by Spotify but could not be considered as safe matches, according to the  `MINIMUM_MATCH_DECISION_SCORE` setting.
 
 This step facilitates two functions: 
 - exporting a **CSV report** which contains, as rows, all the entries from the listening history that could not be safely matched, as well as a column with all the potential matches (numbered list) and their details (score, artist, track):
@@ -173,14 +176,14 @@ How to use it:
    - `--export` flag specifies to the script to execute the export step
    - `--import` flag specifies to the script to execute the import step (if both are specified, first the export is done, then the script waits for user input, then the import is done);
 2. The script will generate a CSV file (`output\\<your-file>.rich.doubt.validator.csv`) in the format described above and then it will wait for user input (RETURN key, do not press it!)
-3. The user (you) must open the CSV file and fill in, for all rows, the `your_choice` column with a valid number
-4. The user (you) must press the RETURN key in the script window; the script now will read back the CSV and validate the user's (your) choices
+3. The script will automatically open the CSV file for you; you have to fill in, for all rows, the `your_choice` column with a valid number
+4. The user (you) must press the RETURN key in the script window once you filled in all rows; the script now will read back the CSV and validate the user's (your) choices
    - make sure you have filled in the CSV correctly, otherwise there will be errors
    - make sure that the json file and the csv file are in the same directory (if running the script manually or on custom files / directories)
    - do not change the order of rows from the CSV; do not change the order of rows from the JSON; do not change the order of tracks from the JSON
 5.  The script will generate:
-    - a new file `output\\<your-file>.rich.doubt.validated.json`, this file can be directly used as final ✅
-    - a new file `output\\<your-file>.rich.doubt.invalid.json`, containing items marked as not matched in the CSV - this file cannot be used as final ❌
+    - a new file `output\\ok\\<your-file>.rich.doubt.validated.json`, this file can be directly used as final ✅
+    - a new file `output\\errors\\<your-file>.rich.doubt.invalid.json`, containing items marked as not matched in the CSV - this file cannot be used as final ❌
 
 
 
@@ -191,7 +194,7 @@ How to use it:
 python sanitizer.py --file watch-history-small.json
 => output\\watch-history-small.songs.json,
 => output\\watch-history-small.videos.json
-=> output\\watch-history-small.errors.json
+=> output\\errors\\watch-history-small.errors.json
 
 #2 - convert the songs
 python converter.py --file output\\watch-history-small.songs.json 
@@ -205,30 +208,31 @@ python converter.py --file output\\watch-history-small.videos.json
 
 #5 - enrich the songs and/or videos with spotify track data
 python enricher.py --file output\\watch-history-small.songs.spotify.json
-=> output\\watch-history-small.songs.spotify.rich.ok.json
+=> output\\ok\\watch-history-small.songs.spotify.rich.ok.json
 => output\\watch-history-small.songs.spotify.rich.doubt.json
-=> output\\watch-history-small.songs.spotify.rich.errors.json
+=> output\\errors\\watch-history-small.songs.spotify.rich.errors.json
 
 python enricher.py --file output\\watch-history-small.videos.spotify.json
-=> output\\watch-history-small.videos.spotify.rich.ok.json
+=> output\\ok\\watch-history-small.videos.spotify.rich.ok.json
 => output\\watch-history-small.videos.spotify.rich.doubt.json
-=> output\\watch-history-small.videos.spotify.rich.errors.json
+=> output\\errors\\watch-history-small.videos.spotify.rich.errors.json
 
 #6 - generate the CSV report for the songs and/or videos in doubt, fill it in, then import it back
 python reporter.py --file output\\watch-history-small.songs.spotify.rich.doubt.json --import --export
 => output\\watch-history-small.songs.spotify.rich.doubt.validator.csv
-=> output\\watch-history-small.songs.spotify.rich.doubt.validated.json
+=> output\\ok\\watch-history-small.songs.spotify.rich.doubt.validated.json
+=> output\\errors\\watch-history-small.songs.spotify.rich.doubt.invalid.json
 
 python reporter.py --file output\\watch-history-small.videos.spotify.rich.doubt.json --import --export
 => output\\watch-history-small.videos.spotify.rich.doubt.validator.csv
-=> output\\watch-history-small.videos.spotify.rich.doubt.validated.json
-=> output\\watch-history-small.videos.spotify.rich.doubt.invalid.json
+=> output\\ok\\watch-history-small.videos.spotify.rich.doubt.validated.json
+=> output\\errors\\watch-history-small.videos.spotify.rich.doubt.invalid.json
 
-#7 - use the successfully created files
-- output\\watch-history-small.songs.spotify.rich.ok.json
-- output\\watch-history-small.videos.spotify.rich.ok.json
-- output\\watch-history-small.songs.spotify.rich.doubt.validated.json
-- output\\watch-history-small.videos.spotify.rich.doubt.validated.json
+#7 - use the successfully created files from output\\ok directory
+- output\\ok\\watch-history-small.songs.spotify.rich.ok.json
+- output\\ok\\watch-history-small.videos.spotify.rich.ok.json
+- output\\ok\\watch-history-small.songs.spotify.rich.doubt.validated.json
+- output\\ok\\watch-history-small.videos.spotify.rich.doubt.validated.json
 - any errored files that you re-process manually later
 
 ```
@@ -238,25 +242,30 @@ python reporter.py --file output\\watch-history-small.videos.spotify.rich.doubt.
 
 This is a wrapper around the previous steps, intended to be used as an all-in-one script (easier to use). 
 
-**Note**: It is important to know that this script does not process the songs that end up with errors when interpreting / transforming the listening history. It will generate the detailed `.error` files as described in the previous chapters, inform about them during the process and at the end and will log them to `output\\logs.txt`. To reprocess the error files (it requires manual intervention in editing the JSONs most of the times), the steps from the previous chapter must be used individually.
+**Note**: It is important to know that this script does not process the songs that end up with errors when interpreting / transforming the listening history. It will generate the detailed `.error` files in the `output\\errors` directory, as described in the previous chapters, inform you about them during the process and, at the end, will log them to `output\\logs.txt`. To reprocess the error files (it requires manual intervention in editing the JSONs most of the times, see the Caveats chapter), the steps from the previous chapter must be used individually (or this script by making use of the --skip parameters)
+
+**Note**: all the scripts will output informational logs to both screen and to the file `output/logs.txt`.
 
 How to use:
 1. Run `python converter-aio.py --file watch-history.json`
-   1. You can use `--ignore-videos` if you want to ignore the music videos found in the YouTube Music history (as specified in the individual steps and in [Caveats / Troubleshooting]((#4-caveats--troubleshooting))), as YouTube videos are ignored by default
+   1. You can use `--ignore-videos` if you want to ignore the music videos found in the YouTube Music history (as specified in the individual steps and in [Caveats / Troubleshooting]((#4-caveats--troubleshooting))); YouTube videos are ignored by default
    2. You can use `--skip-**` instructions to skip certain steps of the process (simulate individual steps or only run from a certain step forward):
       1. `--skip-sanitize` - skip first step (history sanitization)
       2. `--skip-convert` - skip second step (conversion of history to spotify file format)
       3. `--skip-enrich` - skip third step (data enrichment from Spotify API)
       4. `--skip-report` - skips the final step (manual score matching - export & import)
+      5. `--use-pause` - if you want the script to pause and wait for user input after every major step
 2. Follow the instruction on screen
    1. any errors will stop the process and it needs to be started again
    2. at some points there will be instructions on screen which require manual intervention
+   3. to understand how to fill in the CSV from the last step, see [2.4 Matched track score analysis](#24-matched-track-score-analysis)
 3. At the end, a small report will be printed to the screen (the full log trail can be also found inside `output\\logs.txt`), the main points are:
    1. the *successfully converted files* - these can be used ✅
    2. the *error files* - these are errors and need to be verified, manually edited and re-processed from the failed step:
       1. `<your-file>.errors.json` => failed at **sanitize** step
       2. `<your-file>.[songs|videos].spotify.rich.errors.json` => failed at **enrich** step
-      2. `<your-file>.[songs|videos].spotify.rich.doubt.invalid.json` => marked as not matched at **score analysis** step
+      3. `<your-file>.[songs|videos].spotify.rich.doubt.invalid.json` => marked as not matched at **score analysis** step
+      4. See Caveats below to understand how to reprocess errors
 
 
 
@@ -270,7 +279,7 @@ How to use:
 4. In case of rapidfuzz related errors, get the latest build version from [here](https://www.piwheels.org/project/rapidfuzz/) and install it with `pip install rapidfuzz==<version> --force-reinstall --no-deps`
 5. For files that end-up with errors (listed in previous steps), they cannot be retried if you don't edit anything in the process:
       1. `<your-file>.errors.json` => failed at **sanitize** step
-         1. if you want to retry this, you have to manually edit this file to make sure it has valid artist (`subtitles[0].name`) and track name (`title`)
+         1. if you want to retry this, you have to manually edit this file to make sure it has valid artist (`subtitles[0].name` - `<artist> - Topic` format) and track name (`title` - `Watched <track-name>` format)
          2. after fixing the file, restart it from step 1, using the file as input file
       2. `<your-file>.[songs|videos].spotify.rich.errors.json` => failed at **enrich** step
          1. it's usually due to spotify errors (e.g. unavailable, rate limiting, random errors);
@@ -335,6 +344,7 @@ How to use:
     "skipped": false,
     "offline": false,
     "offline_timestamp": null,
-    "incognito_mode": false
+    "incognito_mode": false,
+    "metadata": {}
   }
 ```

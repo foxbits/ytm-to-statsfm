@@ -199,6 +199,6 @@ if __name__ == "__main__":
         output_entries, invalid_entries = import_choices(entries, rows)
 
         # save back to json
-        export_to_json(output_entries, input_file, suffix="validated")
-        export_to_json(invalid_entries, input_file, suffix="invalid")
+        export_to_json(output_entries, input_file, suffix="validated", parent_directory="output\\ok")
+        export_to_json(invalid_entries, input_file, suffix="invalid", parent_directory="output\\errors")
 

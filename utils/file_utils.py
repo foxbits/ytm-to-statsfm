@@ -5,19 +5,19 @@ from typing import List, Optional
 
 from utils.simple_logger import print_log
 
-def generate_output_filename(input_filename: str, suffix="processed", separator=".", new_extension = None) -> str:
+def generate_output_filename(input_filename: str, suffix="processed", separator=".", new_extension = None, parent_directory = "output") -> str:
     """
     Append a suffix to the input filename before the file extension.
     """
     filename = os.path.split(input_filename)[-1]
     base_name = os.path.splitext(filename)[0]
     extension = os.path.splitext(filename)[1]
-    output_dir = "output"
+    output_dir = parent_directory
     os.makedirs(output_dir, exist_ok=True)
     output_file = os.path.join(output_dir, f"{os.path.basename(base_name)}{separator}{suffix}{new_extension or extension}")
     return output_file
 
-def export_to_json(data: List[object], input_filename: str, suffix="processed", separator=".") -> Optional[str]:
+def export_to_json(data: List[object], input_filename: str, suffix="processed", separator=".", parent_directory = "output") -> Optional[str]:
     """
     Export filtered data to a JSON file with optional suffix
     """
@@ -26,7 +26,7 @@ def export_to_json(data: List[object], input_filename: str, suffix="processed", 
         return None
 
     # Create output filename
-    output_file = generate_output_filename(input_filename, suffix, separator)
+    output_file = generate_output_filename(input_filename, suffix, separator, parent_directory=parent_directory)
 
     try:
         # Convert objects to dictionaries for JSON serialization
