@@ -7,6 +7,8 @@ from objects.process_metadata import ProcessingStatus
 from spotify.spotify_listening_history import SpotifyStreamingEntry
 from utils.file_utils import export_to_csv, export_to_json, generate_output_filename
 from utils.simple_logger import print_log
+import subprocess
+import platform
 
 
 def read_spotify_entries(input_file: str) -> List[SpotifyStreamingEntry]:
@@ -87,12 +89,31 @@ def build_choice_report_clear(entries: List[SpotifyStreamingEntry], score_by: st
 
     return report
 
-def import_choices(entries: List[SpotifyStreamingEntry], choices: List[str]) -> List[SpotifyStreamingEntry]:
+def import_choices(entries: List[SpotifyStreamingEntry], choices: List[str]) -> tuple[List[SpotifyStreamingEntry], List[SpotifyStreamingEntry]]:
+    """
+    Process user choices for Spotify streaming entries and categorize them.
+    Args:
+        entries (List[SpotifyStreamingEntry]): List of streaming entries to process
+        choices (List[str]): List of user choices, where each choice contains track selection data.
+                           Expected to have header row + one row per entry.
+                           Choice value should be in index 3 of each row.
+    Returns:
+        tuple[List[SpotifyStreamingEntry], List[SpotifyStreamingEntry]]: 
+            - First item: output_entries - Successfully matched entries with valid choices
+            - Second item: invalid_entries - Entries that were skipped due to marked as invalid (choice = -1 / unmatched)
+    Raises:
+        SystemExit: If invalid choices are found (non-integer, out of range, or malformed data)
+    Notes:
+        - Choice value of -1 indicates no valid match and entry will be skipped
+        - Choice values must be between 1 and the number of available tracks for the entry
+        - Function modifies the status and metadata of processed entries
+    """
     if len(choices) != len(entries) + 1:  # +1 for header
         print_log(f"Error: Expected {len(entries) + 1} choices, got {len(choices)}")
-        return []
+        return [], []
 
     output_entries = []
+    invalid_entries = []
 
     for i in range(len(entries)):
         entry = entries[i]
@@ -107,13 +128,15 @@ def import_choices(entries: List[SpotifyStreamingEntry], choices: List[str]) -> 
         
         if choice  == -1:
             print_log(f"Row {i + 1} was marked as no valid choices. It will be skipped.")
+            entry.set_status_as_unmatched()
+            invalid_entries.append(entry)
             continue
 
         entry.set_status_as_matched(ProcessingStatus.FIXED, choice - 1)
         entry.set_info_from_track(choice - 1)
         output_entries.append(entry)
 
-    return output_entries
+    return output_entries, invalid_entries
 
 
 if __name__ == "__main__":
@@ -147,15 +170,24 @@ if __name__ == "__main__":
         # Export to file
         export_to_csv(report, input_file, suffix="validator")
 
-    # Wait for user input to continue
-    print("Please make sure you have filled the choices in the 'validator' CSV.\n"
-          "(make sure that both the original json and the CSV are in the same folder)")
-    input("Press Enter to continue once that is done...")
-
     if do_import:
         # csv file uses name convention <input-file>.validator.csv
         csv_file = generate_output_filename(input_file, suffix="validator", new_extension=".csv")
 
+        # Open the CSV file in the default application
+        system = platform.system()
+        if system == "Windows":
+            os.startfile(csv_file)
+        elif system == "Darwin":  # macOS
+            subprocess.run(["open", csv_file])
+        else:  # Linux and other Unix-like systems
+            subprocess.run(["xdg-open", csv_file])
+
+        # Wait for user input to continue
+        print("Please make sure you have filled the choices in the 'validator' CSV.\n"
+            "(make sure that both the original json and the CSV are in the same folder)")
+        input("Press Enter to continue once that is done...")
+        
         # Read CSV file
         rows = read_csv(csv_file)
 
@@ -164,8 +196,9 @@ if __name__ == "__main__":
             entries = read_spotify_entries(input_file)
         
         # import the choices (with range validation)
-        output_entries = import_choices(entries, rows)
+        output_entries, invalid_entries = import_choices(entries, rows)
 
         # save back to json
         export_to_json(output_entries, input_file, suffix="validated")
+        export_to_json(invalid_entries, input_file, suffix="invalid")
 

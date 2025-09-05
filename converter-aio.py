@@ -41,10 +41,10 @@ def check_file_exists(filepath: str) -> bool:
     Check if a file exists and log the result
     """
     if os.path.exists(filepath):
-        print_log(f"✓ Validating generated file - EXISTS: {filepath}")
+        print_log(f"✓ File EXISTS: {filepath}")
         return True
     else:
-        print_log(f"✗ Validating generated file - DOES NOT EXIST: {filepath}")
+        print_log(f"✗ File DOES NOT EXIST: {filepath}")
         return False
 
 def print_title(text):
@@ -179,6 +179,8 @@ def main():
     # Define output files
     validated_songs = f"output\\{base_name}.songs.spotify.rich.doubt.validated.json"
     validated_videos = f"output\\{base_name}.videos.spotify.rich.doubt.validated.json"
+    invalid_songs = f"output\\{base_name}.songs.spotify.rich.doubt.invalid.json"
+    invalid_videos = f"output\\{base_name}.videos.spotify.rich.doubt.invalid.json"
 
     if args.skip_report:
         print_log("Skipping CSV analysis / reporting step...")
@@ -194,6 +196,9 @@ def main():
             if check_file_exists(validated_songs):
                 ok_files.append(validated_songs)
 
+            if check_file_exists(invalid_songs):
+                error_files.append(invalid_songs)
+
         # Report for videos
         has_videos = check_file_exists(enriched_videos_doubt)
         if has_videos:
@@ -202,6 +207,9 @@ def main():
 
             if check_file_exists(validated_videos):
                 ok_files.append(validated_videos)
+
+            if check_file_exists(invalid_videos):
+                error_files.append(invalid_videos)
 
     print_title("Pipeline execution complete!")
 

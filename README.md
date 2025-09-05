@@ -21,12 +21,12 @@ Each step of the process is available as a standalone script, in order to allow 
   - [2.2 Data Conversion to Spotify listening history format](#22-data-conversion-to-spotify-listening-history-format)
   - [2.3 Data enrichment using the official Spotify Search API](#23-data-enrichment-using-the-official-spotify-search-api)
   - [2.4 Matched track score analysis](#24-matched-track-score-analysis)
-  - [Example of full flow](#example-of-full-flow)
-- [Processing the History (All In One)](#processing-the-history-all-in-one)
-- [Caveats / Troubleshooting](#caveats--troubleshooting)
-- [Example of the same song in the 2 different formats](#example-of-the-same-song-in-the-2-different-formats)
-  - [YouTube (Music) listening history (INPUT)](#youtube-music-listening-history-input)
-  - [Spotify listening history (OUTPUT)](#spotify-listening-history-output)
+  - [2.5 Example of full flow](#25-example-of-full-flow)
+- [3. Processing the History (All In One)](#3-processing-the-history-all-in-one)
+- [4. Caveats / Troubleshooting](#4-caveats--troubleshooting)
+- [5. Example of the same song in the 2 different formats](#5-example-of-the-same-song-in-the-2-different-formats)
+  - [5.1 YouTube (Music) listening history (INPUT)](#51-youtube-music-listening-history-input)
+  - [5.2 Spotify listening history (OUTPUT)](#52-spotify-listening-history-output)
 
 
 ## 1. Pre-requisites
@@ -99,7 +99,7 @@ These env vars are used to populate some default fields that are required in Spo
    2. `.videos.json` - the list of music videos detected on your YT Music listening history; These can be or cannot be accurate when converted to tracks 🤔
       - if you run the program with `--ignore-videos` flag, then the music videos are not processed and are put in a `.skipped.json` list
       - Since music videos naming can follow or not follow deterministic naming standards, it is recommended to do a double check and edit / correct the entries in this file before importing; otherwise, you will have to review the matchings anyways in the final step
-      - For more details see #2 from [Caveats / Troubleshooting](#caveats--troubleshooting)
+      - For more details see #2 from [Caveats / Troubleshooting]((#4-caveats--troubleshooting))
    3. `.errors.json` - the list of entries in the history that cannot be processed ❌
       - The file contains entries in the original YT Music listening history format, therefore, if you think you can fix any of the entries, have a quick look, fix them and then use the corrected file as input for the `sanitizer script` (e.g. restart the process but with the corrected file);
       - Most of the cases the error is due to missing artist name / track name in the YTM export, and you have to put them manually
@@ -178,13 +178,13 @@ How to use it:
    - make sure you have filled in the CSV correctly, otherwise there will be errors
    - make sure that the json file and the csv file are in the same directory (if running the script manually or on custom files / directories)
    - do not change the order of rows from the CSV; do not change the order of rows from the JSON; do not change the order of tracks from the JSON
-5.  The script will generate a new file `output\\<your-file>.rich.doubt.validated.json`
-    - this file can be directly used as final ✅
+5.  The script will generate:
+    - a new file `output\\<your-file>.rich.doubt.validated.json`, this file can be directly used as final ✅
+    - a new file `output\\<your-file>.rich.doubt.invalid.json`, containing items marked as not matched in the CSV - this file cannot be used as final ❌
 
 
 
-
-### Example of full flow
+### 2.5 Example of full flow
 
 ```
 #1 - sanitize and split input
@@ -222,28 +222,45 @@ python reporter.py --file output\\watch-history-small.songs.spotify.rich.doubt.j
 python reporter.py --file output\\watch-history-small.videos.spotify.rich.doubt.json --import --export
 => output\\watch-history-small.videos.spotify.rich.doubt.validator.csv
 => output\\watch-history-small.videos.spotify.rich.doubt.validated.json
+=> output\\watch-history-small.videos.spotify.rich.doubt.invalid.json
 
 #7 - use the successfully created files
 - output\\watch-history-small.songs.spotify.rich.ok.json
 - output\\watch-history-small.videos.spotify.rich.ok.json
 - output\\watch-history-small.songs.spotify.rich.doubt.validated.json
 - output\\watch-history-small.videos.spotify.rich.doubt.validated.json
-- any errored files that you re-process manually
+- any errored files that you re-process manually later
 
 ```
 
 
-## Processing the History (All In One)
+## 3. Processing the History (All In One)
 
 This is a wrapper around the previous steps, intended to be used as an all-in-one script (easier to use). 
 
-**Note**: It is important to know that this script does not process the songs that end up with errors when interpreting / transforming the listening history. It will log them to `output\\logs.txt` and it will generate the detailed `.error` files as described in the previous chapters. To reprocess the error files (it requires manual intervention in editing the JSONs most of the times), the steps from the previous chapter must be used individually.
+**Note**: It is important to know that this script does not process the songs that end up with errors when interpreting / transforming the listening history. It will generate the detailed `.error` files as described in the previous chapters, inform about them during the process and at the end and will log them to `output\\logs.txt`. To reprocess the error files (it requires manual intervention in editing the JSONs most of the times), the steps from the previous chapter must be used individually.
 
-TO DO: document aio, fix file exists/ not exists message, fix file found message, remove metadata from OK jsons
+How to use:
+1. Run `python converter-aio.py --file watch-history.json`
+   1. You can use `--ignore-videos` if you want to ignore the music videos found in the YouTube Music history (as specified in the individual steps and in [Caveats / Troubleshooting]((#4-caveats--troubleshooting))), as YouTube videos are ignored by default
+   2. You can use `--skip-**` instructions to skip certain steps of the process (simulate individual steps or only run from a certain step forward):
+      1. `--skip-sanitize` - skip first step (history sanitization)
+      2. `--skip-convert` - skip second step (conversion of history to spotify file format)
+      3. `--skip-enrich` - skip third step (data enrichment from Spotify API)
+      4. `--skip-report` - skips the final step (manual score matching - export & import)
+2. Follow the instruction on screen
+   1. any errors will stop the process and it needs to be started again
+   2. at some points there will be instructions on screen which require manual intervention
+3. At the end, a small report will be printed to the screen (the full log trail can be also found inside `output\\logs.txt`), the main points are:
+   1. the *successfully converted files* - these can be used ✅
+   2. the *error files* - these are errors and need to be verified, manually edited and re-processed from the failed step:
+      1. `<your-file>.errors.json` => failed at **sanitize** step
+      2. `<your-file>.[songs|videos].spotify.rich.errors.json` => failed at **enrich** step
+      2. `<your-file>.[songs|videos].spotify.rich.doubt.invalid.json` => marked as not matched at **score analysis** step
 
 
 
-## Caveats / Troubleshooting
+## 4. Caveats / Troubleshooting
 
 1. This does not process data watched on the YouTube site itself, only on YouTube Music, because the Google Takeout data for listening history does not contain video type, therefore music videos cannot be identified.
 2. I recommend you to test first with a small portion of your data (just pick a few entries from the array and create a `watch-history-small.json`); if everything is ok, go with the full data
@@ -251,11 +268,25 @@ TO DO: document aio, fix file exists/ not exists message, fix file found message
    As you know, on YT Music you can both listen to songs and watch videos (which are basically YouTube videos). 
    These videos often do not have standard track artist / title naming format and usually put everything in the title (since they are YT videos) - e.g. "Artist - Song | Official Audio" and other variations. This means that the script has to do some non-deterministic guessing as in what's the artist and the song title in such videos, which often fails if you want a lot of music videos with non-standard formatting. Therefore, you can choose to ignore such videos watched on YT Music (note: videos watched on YouTube itself are automatically ignored). If you choose not to ignore them, the script tries to sanitize them as best as it can, following the format <artist-name><split-chars><song-title> and stripping any Official* (with/without paranthesis) from the song
 4. In case of rapidfuzz related errors, get the latest build version from [here](https://www.piwheels.org/project/rapidfuzz/) and install it with `pip install rapidfuzz==<version> --force-reinstall --no-deps`
+5. For files that end-up with errors (listed in previous steps), they cannot be retried if you don't edit anything in the process:
+      1. `<your-file>.errors.json` => failed at **sanitize** step
+         1. if you want to retry this, you have to manually edit this file to make sure it has valid artist (`subtitles[0].name`) and track name (`title`)
+         2. after fixing the file, restart it from step 1, using the file as input file
+      2. `<your-file>.[songs|videos].spotify.rich.errors.json` => failed at **enrich** step
+         1. it's usually due to spotify errors (e.g. unavailable, rate limiting, random errors);
+         2. technically they can be retried without changing the file, since it's usually Spotify's fault
+         3. but certain errors might be due to weird entries in history and might require track name (`master_metadata_track_name`) / artist (`master_metadata_album_artist_name`) edit
+      3. `<your-file>.[songs|videos].spotify.rich.doubt.invalid.json` => marked as not matched at **score analysis** step
+         1. most likely this file cannot be retried
+         2. it means Spotify returned some tracks as possible matches that you marked as incorrect (you didn't find any of the results correct)
+         3. if the input track name (`master_metadata_track_name`) and artist (`master_metadata_album_artist_name`) are correct, then it means Spotify really doesn't have the track
+         4. if the input track name and artist are incorrect, then edit them end retry the file from the **enrich** step
+         5. what you can also try is to increase the `SPOTIFY_SEARCH_RESULTS_LIMIT` to make Spotify return more results
 
 
-## Example of the same song in the 2 different formats
+## 5. Example of the same song in the 2 different formats
 
-### YouTube (Music) listening history (INPUT)
+### 5.1 YouTube (Music) listening history (INPUT)
 
 ```
 {
@@ -278,7 +309,7 @@ TO DO: document aio, fix file exists/ not exists message, fix file found message
 }
 ```
 
-### Spotify listening history (OUTPUT)
+### 5.2 Spotify listening history (OUTPUT)
 
 ```
 {
