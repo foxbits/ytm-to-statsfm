@@ -146,8 +146,8 @@ if __name__ == "__main__":
             doubt.append(entry)
 
     # Export enriched data
-    export_to_json(matched, input_file, "rich.ok")
+    export_to_json(matched, input_file, "rich.ok", parent_directory="output\\ok")
     export_to_json(doubt, input_file, "rich.doubt")
-    export_to_json(processed_entries.errors, input_file, "rich.errors")
+    export_to_json(processed_entries.errors, input_file, "rich.errors", parent_directory="output\\errors")
 
     print_log("Enrichment process complete!")
