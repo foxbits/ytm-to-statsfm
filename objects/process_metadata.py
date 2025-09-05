@@ -10,6 +10,7 @@ class ProcessingStatus(Enum):
     SKIPPED = "SKIPPED"
     DOUBT = "DOUBT"
     FIXED = "FIXED"
+    NO_MATCH = "NO_MATCH"
 
 class YTMProcessingMetadata:
     def __init__(self, status: ProcessingStatus = ProcessingStatus.OK, status_message: str = "", is_video: bool = False,

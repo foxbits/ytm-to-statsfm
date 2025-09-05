@@ -10,22 +10,23 @@ It is based on a multi-step process:
      - otherwise, a report is generated which requires manual review to select the right track from a list of returned results (manual)
      - in this case, the process is able to import a manually reviewed file and then process it normally (automatic)
 
-Each step of the process is available as a standalone script, in order to allow you to run / re-do each step manually, or as part of an automated end-to-end script.
+Each step of the process is available as a standalone script, in order to allow you to run / re-do each step manually (see [2. Processing the History](#2-processing-the-history)), or as part of an automated all-in-one end-to-end script.
 
 - [1. Pre-requisites](#1-pre-requisites)
   - [1.1. Exporting your YouTube Music Data](#11-exporting-your-youtube-music-data)
   - [1.2. Installing software](#12-installing-software)
   - [1.3 Setting the environment variables](#13-setting-the-environment-variables)
-- [2. Processing the History](#2-processing-the-history)
+- [2. Processing the History (Individual Scripts)](#2-processing-the-history-individual-scripts)
   - [2.1. Data Sanitization](#21-data-sanitization)
   - [2.2 Data Conversion to Spotify listening history format](#22-data-conversion-to-spotify-listening-history-format)
   - [2.3 Data enrichment using the official Spotify Search API](#23-data-enrichment-using-the-official-spotify-search-api)
   - [2.4 Matched track score analysis](#24-matched-track-score-analysis)
-  - [Example of full flow](#example-of-full-flow)
-- [Caveats / Troubleshooting](#caveats--troubleshooting)
-- [Example of the same song in the 2 different formats](#example-of-the-same-song-in-the-2-different-formats)
-  - [YouTube (Music) listening history](#youtube-music-listening-history)
-  - [Spotify listening history](#spotify-listening-history)
+  - [2.5 Example of full flow](#25-example-of-full-flow)
+- [3. Processing the History (All In One)](#3-processing-the-history-all-in-one)
+- [4. Caveats / Troubleshooting](#4-caveats--troubleshooting)
+- [5. Example of the same song in the 2 different formats](#5-example-of-the-same-song-in-the-2-different-formats)
+  - [5.1 YouTube (Music) listening history (INPUT)](#51-youtube-music-listening-history-input)
+  - [5.2 Spotify listening history (OUTPUT)](#52-spotify-listening-history-output)
 
 
 ## 1. Pre-requisites
@@ -83,7 +84,7 @@ These env vars are used to populate some default fields that are required in Spo
 3. `PLATFORM` - Put your own platform (needs to be supported by spotify), or use `ios`.
 4. `IP_ADDR` - your ip address - use some random one or add your actual ip address (https://www.whatsmyip.org)
 
-## 2. Processing the History
+## 2. Processing the History (Individual Scripts)
 
 **Note**: all the scripts will output informational logs to both screen and to the file `output/logs.txt`.
 
@@ -94,12 +95,12 @@ These env vars are used to populate some default fields that are required in Spo
    1. This script uses by default as input file a `watch-history.json` available in the same folder; you can use a different file if you want, by specifying `--file your-file.json`
 3. The script will run (time depends on your history size). It will then output info regarding its status.
 4. The script exports 3 files in the `output` folder, based on the original file name:
-   1. `.sanitized.songs.json` - the list of songs detected on YT Music listening history. These are 100% accurate ✅
-   2. `.sanitized.videos.json` - the list of music videos detected on your YT Music listening history; These can be or cannot be accurate when converted to tracks 🤔
-      - if you run the program with `--ignore-videos` flag, then the music videos are not processed and are put in a `.sanitized.skipped.json` list
+   1. `.songs.json` - the list of songs detected on YT Music listening history. These are 100% accurate ✅
+   2. `.videos.json` - the list of music videos detected on your YT Music listening history; These can be or cannot be accurate when converted to tracks 🤔
+      - if you run the program with `--ignore-videos` flag, then the music videos are not processed and are put in a `.skipped.json` list
       - Since music videos naming can follow or not follow deterministic naming standards, it is recommended to do a double check and edit / correct the entries in this file before importing; otherwise, you will have to review the matchings anyways in the final step
-      - For more details see #2 from [Caveats / Troubleshooting](#caveats--troubleshooting)
-   3. `.sanitized.errors.json` - the list of entries in the history that cannot be processed ❌
+      - For more details see #2 from [Caveats / Troubleshooting]((#4-caveats--troubleshooting))
+   3. `.errors.json` - the list of entries in the history that cannot be processed ❌
       - The file contains entries in the original YT Music listening history format, therefore, if you think you can fix any of the entries, have a quick look, fix them and then use the corrected file as input for the `sanitizer script` (e.g. restart the process but with the corrected file);
       - Most of the cases the error is due to missing artist name / track name in the YTM export, and you have to put them manually
 5. At the end of this process you will have 1/2/3 json files that you can use for the next step
@@ -115,10 +116,10 @@ For more insights into the Spotify Data format, see:
 
 Do the following steps:
 
-1. Run `python converter.py --file output\\watch-history.sanitized.*.json`
+1. Run `python converter.py --file output\\watch-history.*.json`
    1. Run it with the `songs` and/or `videos` files 
    2. Alternatively you can run it with any file that follows the YTM format defined in [`objects/ytm_processed_track.py`](objects/ytm_processed_track.py) if you use custom files
-2. You will obtain a new json file named `<your-file>.spotify.format.json` in the `output` directory
+2. You will obtain a new json file named `<your-file>.spotify.json` in the `output` directory
 3. This full file follows the exact Spotify listening history format, but is populated only with the data available in YTM history (artist name, track name, timestamp) and with the default parameters (some from env vars). You most likely cannot import this file in many places. The full data is populated in next step (the enrichment).
 
 ### 2.3 Data enrichment using the official Spotify Search API
@@ -127,23 +128,23 @@ Since YTM does provide only the artist name, track title and timestamp when play
 
 This extra data (the most important being the spotify track id) is identified through searching the Spotify Metadata API by artist & track name. This result will sometimes return multiple entries.
 
-1. Run `python enricher.py --file output\\watch-history.sanitized.*.spotify.format.json`
+1. Run `python enricher.py --file output\\watch-history.*.spotify.json`
    1. Run it with the `songs` and/or `videos` files
    2. Alternatively you can run it with any file that follows the Spotify format defined in [`spotify/spotify_listening_history.py`](spotify/spotify_listening_history.py) if you use custom files
 2. Wait for it to run. If your file data is big, you will encounter Spotify Rate limiting (180 searches / minute) so it might take a while.
 3. You will obtain a new set of json files:
-   1. `<your-file>.enriched.matched.json` ✅
+   1. `<your-file>.rich.ok.json` ✅
       - contains all the successfully matched tracks with metadata; a track is matched if:
          - has a matching score with the top result above `SCORE_TRACKS_WEIGHT`; 
          - spotify returns them as exact matches (results for exact track name and artist)
          - you can see the score in the `metadata.match_score`
       - `tracks` array populated with top spotify results
       - this file can be directly used as final ✅
-   2. `<your-file>.enriched.doubt.json` 🤔
+   2. `<your-file>.rich.doubt.json` 🤔
       - contains the tracks that cannot be safely matched with a result automatically
       - they need manual validation
       - this file is used in next step
-   3. `<your-file>.enriched.errors.json` ❌
+   3. `<your-file>.rich.errors.json` ❌
       - contains all the tracks that ended in error either when communicating with the Spotify API (e.g. rate limiting retries ending, unknown errors) or in not being able to identify any tracks
       - you can inspect these errors and eventually do some edits on it and re-process (restart this flow)
 
@@ -167,70 +168,99 @@ This step facilitates two functions:
 
 How to use it:
 
-1. Run `python reporter.py --file output\\<your-file>.enriched.doubt.json --export --import`
+1. Run `python reporter.py --file output\\<your-file>.rich.doubt.json --export --import`
    - `--file` flag allows specifying the json file to process; this should be the `.doubt.json` file generated at previous step
    - `--export` flag specifies to the script to execute the export step
    - `--import` flag specifies to the script to execute the import step (if both are specified, first the export is done, then the script waits for user input, then the import is done);
-2. The script will generate a CSV file (`output\\<your-file>.enriched.doubt.validator.csv`) in the format described above and then it will wait for user input (RETURN key, do not press it!)
+2. The script will generate a CSV file (`output\\<your-file>.rich.doubt.validator.csv`) in the format described above and then it will wait for user input (RETURN key, do not press it!)
 3. The user (you) must open the CSV file and fill in, for all rows, the `your_choice` column with a valid number
 4. The user (you) must press the RETURN key in the script window; the script now will read back the CSV and validate the user's (your) choices
    - make sure you have filled in the CSV correctly, otherwise there will be errors
    - make sure that the json file and the csv file are in the same directory (if running the script manually or on custom files / directories)
    - do not change the order of rows from the CSV; do not change the order of rows from the JSON; do not change the order of tracks from the JSON
-5.  The script will generate a new file `output\\<your-file>.enriched.doubt.validated.json`
-    - this file can be directly used as final ✅
+5.  The script will generate:
+    - a new file `output\\<your-file>.rich.doubt.validated.json`, this file can be directly used as final ✅
+    - a new file `output\\<your-file>.rich.doubt.invalid.json`, containing items marked as not matched in the CSV - this file cannot be used as final ❌
 
 
-### Example of full flow
+
+### 2.5 Example of full flow
 
 ```
 #1 - sanitize and split input
 python sanitizer.py --file watch-history-small.json
-=> output\\watch-history-small.sanitized.songs.json,
-=> output\\watch-history-small.sanitized.videos.json
-=> output\\watch-history-small.sanitized.errors.json
+=> output\\watch-history-small.songs.json,
+=> output\\watch-history-small.videos.json
+=> output\\watch-history-small.errors.json
 
 #2 - convert the songs
-python converter.py --file output\\watch-history-small.sanitized.songs.json 
-=> output\\watch-history-small.sanitized.songs.spotify.format.json
+python converter.py --file output\\watch-history-small.songs.json 
+=> output\\watch-history-small.songs.spotify.json
 
-#3 - manually double check the videos json output\\watch-history-small.sanitized.videos.json
+#3 - manually double check the videos json output\\watch-history-small.videos.json
 
 #4 - convert the music videos
-python converter.py --file output\\watch-history-small.sanitized.videos.json
-=> output\\watch-history-small.sanitized.videos.spotify.format.json
+python converter.py --file output\\watch-history-small.videos.json
+=> output\\watch-history-small.videos.spotify.json
 
 #5 - enrich the songs and/or videos with spotify track data
-python enricher.py --file output\\watch-history-small.sanitized.songs.spotify.format.json
-=> output\\watch-history-small.sanitized.songs.spotify.format.enricher.matched.json
-=> output\\watch-history-small.sanitized.songs.spotify.format.enricher.doubt.json
-=> output\\watch-history-small.sanitized.songs.spotify.format.enricher.errors.json
+python enricher.py --file output\\watch-history-small.songs.spotify.json
+=> output\\watch-history-small.songs.spotify.rich.ok.json
+=> output\\watch-history-small.songs.spotify.rich.doubt.json
+=> output\\watch-history-small.songs.spotify.rich.errors.json
 
-python enricher.py --file output\\watch-history-small.sanitized.videos.spotify.format.json
-=> output\\watch-history-small.sanitized.videos.spotify.format.enricher.matched.json
-=> output\\watch-history-small.sanitized.videos.spotify.format.enricher.doubt.json
-=> output\\watch-history-small.sanitized.videos.spotify.format.enricher.errors.json
+python enricher.py --file output\\watch-history-small.videos.spotify.json
+=> output\\watch-history-small.videos.spotify.rich.ok.json
+=> output\\watch-history-small.videos.spotify.rich.doubt.json
+=> output\\watch-history-small.videos.spotify.rich.errors.json
 
 #6 - generate the CSV report for the songs and/or videos in doubt, fill it in, then import it back
-python reporter.py --file output\\watch-history-small.sanitized.songs.spotify.format.enricher.doubt.json --import --export
-=> output\\watch-history-small.sanitized.songs.spotify.format.enricher.doubt.validator.csv
-=> output\\watch-history-small.sanitized.songs.spotify.format.enricher.doubt.validated.json
+python reporter.py --file output\\watch-history-small.songs.spotify.rich.doubt.json --import --export
+=> output\\watch-history-small.songs.spotify.rich.doubt.validator.csv
+=> output\\watch-history-small.songs.spotify.rich.doubt.validated.json
 
-python reporter.py --file output\\watch-history-small.sanitized.videos.spotify.format.enricher.doubt.json --import --export
-=> output\\watch-history-small.sanitized.videos.spotify.format.enricher.doubt.validator.csv
-=> output\\watch-history-small.sanitized.videos.spotify.format.enricher.doubt.validated.json
+python reporter.py --file output\\watch-history-small.videos.spotify.rich.doubt.json --import --export
+=> output\\watch-history-small.videos.spotify.rich.doubt.validator.csv
+=> output\\watch-history-small.videos.spotify.rich.doubt.validated.json
+=> output\\watch-history-small.videos.spotify.rich.doubt.invalid.json
 
 #7 - use the successfully created files
-- output\\watch-history-small.sanitized.songs.spotify.format.enricher.matched.json
-- output\\watch-history-small.sanitized.videos.spotify.format.enricher.matched.json
-- output\\watch-history-small.sanitized.songs.spotify.format.enricher.doubt.validated.json
-- output\\watch-history-small.sanitized.videos.spotify.format.enricher.doubt.validated.json
-- any errored files that you re-process manually
+- output\\watch-history-small.songs.spotify.rich.ok.json
+- output\\watch-history-small.videos.spotify.rich.ok.json
+- output\\watch-history-small.songs.spotify.rich.doubt.validated.json
+- output\\watch-history-small.videos.spotify.rich.doubt.validated.json
+- any errored files that you re-process manually later
 
 ```
 
 
-## Caveats / Troubleshooting
+## 3. Processing the History (All In One)
+
+This is a wrapper around the previous steps, intended to be used as an all-in-one script (easier to use). 
+
+**Note**: It is important to know that this script does not process the songs that end up with errors when interpreting / transforming the listening history. It will generate the detailed `.error` files as described in the previous chapters, inform about them during the process and at the end and will log them to `output\\logs.txt`. To reprocess the error files (it requires manual intervention in editing the JSONs most of the times), the steps from the previous chapter must be used individually.
+
+How to use:
+1. Run `python converter-aio.py --file watch-history.json`
+   1. You can use `--ignore-videos` if you want to ignore the music videos found in the YouTube Music history (as specified in the individual steps and in [Caveats / Troubleshooting]((#4-caveats--troubleshooting))), as YouTube videos are ignored by default
+   2. You can use `--skip-**` instructions to skip certain steps of the process (simulate individual steps or only run from a certain step forward):
+      1. `--skip-sanitize` - skip first step (history sanitization)
+      2. `--skip-convert` - skip second step (conversion of history to spotify file format)
+      3. `--skip-enrich` - skip third step (data enrichment from Spotify API)
+      4. `--skip-report` - skips the final step (manual score matching - export & import)
+2. Follow the instruction on screen
+   1. any errors will stop the process and it needs to be started again
+   2. at some points there will be instructions on screen which require manual intervention
+3. At the end, a small report will be printed to the screen (the full log trail can be also found inside `output\\logs.txt`), the main points are:
+   1. the *successfully converted files* - these can be used ✅
+   2. the *error files* - these are errors and need to be verified, manually edited and re-processed from the failed step:
+      1. `<your-file>.errors.json` => failed at **sanitize** step
+      2. `<your-file>.[songs|videos].spotify.rich.errors.json` => failed at **enrich** step
+      2. `<your-file>.[songs|videos].spotify.rich.doubt.invalid.json` => marked as not matched at **score analysis** step
+
+
+
+## 4. Caveats / Troubleshooting
 
 1. This does not process data watched on the YouTube site itself, only on YouTube Music, because the Google Takeout data for listening history does not contain video type, therefore music videos cannot be identified.
 2. I recommend you to test first with a small portion of your data (just pick a few entries from the array and create a `watch-history-small.json`); if everything is ok, go with the full data
@@ -238,11 +268,25 @@ python reporter.py --file output\\watch-history-small.sanitized.videos.spotify.f
    As you know, on YT Music you can both listen to songs and watch videos (which are basically YouTube videos). 
    These videos often do not have standard track artist / title naming format and usually put everything in the title (since they are YT videos) - e.g. "Artist - Song | Official Audio" and other variations. This means that the script has to do some non-deterministic guessing as in what's the artist and the song title in such videos, which often fails if you want a lot of music videos with non-standard formatting. Therefore, you can choose to ignore such videos watched on YT Music (note: videos watched on YouTube itself are automatically ignored). If you choose not to ignore them, the script tries to sanitize them as best as it can, following the format <artist-name><split-chars><song-title> and stripping any Official* (with/without paranthesis) from the song
 4. In case of rapidfuzz related errors, get the latest build version from [here](https://www.piwheels.org/project/rapidfuzz/) and install it with `pip install rapidfuzz==<version> --force-reinstall --no-deps`
+5. For files that end-up with errors (listed in previous steps), they cannot be retried if you don't edit anything in the process:
+      1. `<your-file>.errors.json` => failed at **sanitize** step
+         1. if you want to retry this, you have to manually edit this file to make sure it has valid artist (`subtitles[0].name`) and track name (`title`)
+         2. after fixing the file, restart it from step 1, using the file as input file
+      2. `<your-file>.[songs|videos].spotify.rich.errors.json` => failed at **enrich** step
+         1. it's usually due to spotify errors (e.g. unavailable, rate limiting, random errors);
+         2. technically they can be retried without changing the file, since it's usually Spotify's fault
+         3. but certain errors might be due to weird entries in history and might require track name (`master_metadata_track_name`) / artist (`master_metadata_album_artist_name`) edit
+      3. `<your-file>.[songs|videos].spotify.rich.doubt.invalid.json` => marked as not matched at **score analysis** step
+         1. most likely this file cannot be retried
+         2. it means Spotify returned some tracks as possible matches that you marked as incorrect (you didn't find any of the results correct)
+         3. if the input track name (`master_metadata_track_name`) and artist (`master_metadata_album_artist_name`) are correct, then it means Spotify really doesn't have the track
+         4. if the input track name and artist are incorrect, then edit them end retry the file from the **enrich** step
+         5. what you can also try is to increase the `SPOTIFY_SEARCH_RESULTS_LIMIT` to make Spotify return more results
 
 
-## Example of the same song in the 2 different formats
+## 5. Example of the same song in the 2 different formats
 
-### YouTube (Music) listening history
+### 5.1 YouTube (Music) listening history (INPUT)
 
 ```
 {
@@ -265,8 +309,32 @@ python reporter.py --file output\\watch-history-small.sanitized.videos.spotify.f
 }
 ```
 
-### Spotify listening history
+### 5.2 Spotify listening history (OUTPUT)
 
 ```
-
+{
+    "ts": "2025-07-16T20:40:31.824Z",
+    "platform": "ios",
+    "ms_played": 217466,
+    "conn_country": "US",
+    "ip_addr": "127.0.0.1",
+    "master_metadata_track_name": "Nothing Breaks Like a Heart (feat. Miley Cyrus)",
+    "master_metadata_album_artist_name": "Mark Ronson, Miley Cyrus",
+    "master_metadata_album_album_name": "Nothing Breaks Like a Heart (feat. Miley Cyrus)",
+    "spotify_track_uri": "spotify:track:27rdGxbavYJeBphck5MZAF",
+    "episode_name": null,
+    "episode_show_name": null,
+    "spotify_episode_uri": null,
+    "audiobook_title": null,
+    "audiobook_uri": null,
+    "audiobook_chapter_uri": null,
+    "audiobook_chapter_title": null,
+    "reason_start": "playbtn",
+    "reason_end": "trackdone",
+    "shuffle": null,
+    "skipped": false,
+    "offline": false,
+    "offline_timestamp": null,
+    "incognito_mode": false
+  }
 ```

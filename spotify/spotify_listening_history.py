@@ -88,6 +88,10 @@ class SpotifyStreamingEntry:
         
         if self.metadata.tracks[track_index].exact_search_match:
             self.metadata.status_message += " (exact API search match, not calculated)"
+    
+    def set_status_as_unmatched(self, status: ProcessingStatus = ProcessingStatus.NO_MATCH):
+        self.metadata.status = status
+        self.metadata.status_message = f"All matches are wrong, cannot match"
 
     @classmethod
     def from_ytm_track(cls, ytm_track: YTMProcessedTrack, additional_data: SpotifyAdditionalYTMData = None):
