@@ -5,7 +5,7 @@ import csv
 from typing import List
 from objects.process_metadata import ProcessingStatus
 from spotify.spotify_listening_history import SpotifyStreamingEntry
-from utils.file_utils import export_to_csv, export_to_json, generate_output_filename
+from utils.file_utils import export_to_csv, export_to_json, generate_output_filename, open_file
 from utils.simple_logger import print_log
 import subprocess
 import platform
@@ -175,13 +175,7 @@ if __name__ == "__main__":
         csv_file = generate_output_filename(input_file, suffix="validator", new_extension=".csv")
 
         # Open the CSV file in the default application
-        system = platform.system()
-        if system == "Windows":
-            os.startfile(csv_file)
-        elif system == "Darwin":  # macOS
-            subprocess.run(["open", csv_file])
-        else:  # Linux and other Unix-like systems
-            subprocess.run(["xdg-open", csv_file])
+        open_file(csv_file)
 
         # Wait for user input to continue
         print("Please make sure you have filled the choices in the 'validator' CSV.\n"

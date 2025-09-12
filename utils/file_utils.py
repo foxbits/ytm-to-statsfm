@@ -1,6 +1,8 @@
 
 import json
 import os
+import platform
+import subprocess
 from typing import List, Optional
 
 from utils.simple_logger import print_log
@@ -30,7 +32,7 @@ def export_to_json(data: List[object], input_filename: str, suffix="processed", 
 
     try:
         # Convert objects to dictionaries for JSON serialization
-        json_data = [track.to_dict() for track in data]
+        json_data = [(track if isinstance(track, dict) else track.to_dict()) for track in data]
         
         # Write filtered entries to output file
         with open(output_file, 'w', encoding='utf-8') as output:
@@ -89,3 +91,17 @@ def export_to_csv(contents: str, input_filename: str, suffix="processed", separa
     except Exception as e:
         print_log(f"Error writing to {output_file}: {e}")
         return None
+
+def open_file(file_path: str):
+    """
+    Open a file using the default application based on the operating system
+    """
+    try:
+        if platform.system() == 'Windows':
+            os.startfile(file_path)
+        elif platform.system() == 'Darwin':  # macOS
+            subprocess.run(['open', file_path])
+        else:  # Linux and other OS
+            subprocess.run(['xdg-open', file_path])
+    except Exception as e:
+        print_log(f"Error opening file {file_path}: {e}")
