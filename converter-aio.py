@@ -87,6 +87,7 @@ def main():
     # Define sanitizer output files
     sanitized_songs = f"output\\{base_name}.songs.json"
     sanitized_videos = f"output\\{base_name}.videos.json"
+    sanitized_validated_videos = f"output\\{base_name}.videos.reviewed.json"
     sanitized_errors = f"output\\errors\\{base_name}.errors.json"
     
 
@@ -109,7 +110,7 @@ def main():
     # Define converter output files
     spotified_songs = f"output\\{base_name}.songs.spotify.json"
     # Define expected output files
-    spotified_videos = f"output\\{base_name}.videos.spotify.json"
+    spotified_videos = f"output\\{base_name}.videos.reviewed.spotify.json"
     
     if args.skip_convert:
         print_log("Skipping conversion step...")
@@ -123,16 +124,16 @@ def main():
         
         has_videos = check_file_exists(sanitized_videos)
         if has_videos:
-            # Step 3: Manual check reminder
-
-            print_title("STEP 3: Manual check reminder")
-            print_log(f"Please manually review: {sanitized_videos}")
-            print_log("Check that music videos are correctly identified and formatted (compare metadata original vs matched track and artist name).")
-            input("Press Enter to continue once that is done...")
-            
+            # Step 3: Manual Review of Videos File
+            print_title("STEP 3: Manual Review of Videos File")
+            cmd = f"python reporter-videos.py --file {sanitized_videos} --export --import"
+            run_command(cmd, "Reviewing and validating videos file")
+        
+        has_videos = check_file_exists(sanitized_validated_videos)
+        if has_videos:
             # Step 4 - Videos processing
             print_title("STEP 4: Convert music videos to Spotify format")
-            cmd = f"python converter.py --file {sanitized_videos}"
+            cmd = f"python converter.py --file {sanitized_validated_videos}"
             run_command(cmd, "Converting music videos to Spotify format")
         else:
             print_log("Skipping steps 3 and 4 (videos) since either --ignore-videos is enabled or no videos have been found")
@@ -146,9 +147,9 @@ def main():
     enriched_songs_ok = f"output\\ok\\{base_name}.songs.spotify.rich.ok.json"
     enriched_songs_doubt = f"output\\{base_name}.songs.spotify.rich.doubt.json"
     enriched_songs_errors = f"output\\errors\\{base_name}.songs.spotify.rich.errors.json"
-    enriched_videos_ok = f"output\\ok\\{base_name}.videos.spotify.rich.ok.json"
-    enriched_videos_doubt = f"output\\{base_name}.videos.spotify.rich.doubt.json"
-    enriched_videos_errors = f"output\\errors\\{base_name}.videos.spotify.rich.errors.json"
+    enriched_videos_ok = f"output\\ok\\{base_name}.videos.reviewed.spotify.rich.ok.json"
+    enriched_videos_doubt = f"output\\{base_name}.videos.reviewed.spotify.rich.doubt.json"
+    enriched_videos_errors = f"output\\errors\\{base_name}.videos.reviewed.spotify.rich.errors.json"
 
     if args.skip_enrich:
         print_log("Skipping enrichment step...")
@@ -186,9 +187,9 @@ def main():
 
     # Define output files
     validated_songs = f"output\\ok\\{base_name}.songs.spotify.rich.doubt.validated.json"
-    validated_videos = f"output\\ok\\{base_name}.videos.spotify.rich.doubt.validated.json"
+    validated_videos = f"output\\ok\\{base_name}.videos.reviewed.spotify.rich.doubt.validated.json"
     invalid_songs = f"output\\errors\\{base_name}.songs.spotify.rich.doubt.invalid.json"
-    invalid_videos = f"output\\errors\\{base_name}.videos.spotify.rich.doubt.invalid.json"
+    invalid_videos = f"output\\errors\\{base_name}.videos.reviewed.spotify.rich.doubt.invalid.json"
 
     if args.skip_report:
         print_log("Skipping CSV analysis / reporting step...")

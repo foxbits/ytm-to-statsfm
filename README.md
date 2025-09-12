@@ -136,7 +136,7 @@ How to use it:
    - make sure you have filled in the CSV correctly, otherwise there will be errors
    - make sure that the json file and the csv file are in the same directory (if running the script manually or on custom files / directories)
    - do not change the `artist` and `title` columns as the *matching* back with the original CSV is done based on them 
-5.  The script will generate a new file `output\\<your-file>.videos.validated.json`, which can be used as input in the next step
+5.  The script will generate a new file `output\\<your-file>.videos.reviewed.json`, which can be used as input in the next step
 
 
 ### 2.2 Data Conversion to Spotify listening history format
@@ -224,46 +224,49 @@ How to use it:
 #1 - sanitize and split input
 python sanitizer.py --file watch-history-small.json
 => output\\watch-history-small.songs.json,
-=> output\\watch-history-small.videos.json
+=> output\\watch-history-small.videos.json (if videos enabled)
 => output\\errors\\watch-history-small.errors.json
+
+#1.1 - review the videos file (if videos enabled)
+python reporter-videos.py --file output\\watch-history-small.videos.json --export --import
+=> output\\watch-history-small.videos.validator.csv
+=> output\\watch-history-small.videos.reviewed.json
 
 #2 - convert the songs
 python converter.py --file output\\watch-history-small.songs.json 
 => output\\watch-history-small.songs.spotify.json
 
-#3 - manually double check the videos json output\\watch-history-small.videos.json
+#3 - convert the music videos
+python converter.py --file output\\watch-history-small.videos.validated.json
+=> output\\watch-history-small.videos.reviewed.spotify.json
 
-#4 - convert the music videos
-python converter.py --file output\\watch-history-small.videos.json
-=> output\\watch-history-small.videos.spotify.json
-
-#5 - enrich the songs and/or videos with spotify track data
+#4 - enrich the songs and/or videos with spotify track data
 python enricher.py --file output\\watch-history-small.songs.spotify.json
 => output\\ok\\watch-history-small.songs.spotify.rich.ok.json
 => output\\watch-history-small.songs.spotify.rich.doubt.json
 => output\\errors\\watch-history-small.songs.spotify.rich.errors.json
 
-python enricher.py --file output\\watch-history-small.videos.spotify.json
-=> output\\ok\\watch-history-small.videos.spotify.rich.ok.json
-=> output\\watch-history-small.videos.spotify.rich.doubt.json
-=> output\\errors\\watch-history-small.videos.spotify.rich.errors.json
+python enricher.py --file output\\watch-history-small.videos.reviewed.spotify.json
+=> output\\ok\\watch-history-small.videos.reviewed.spotify.rich.ok.json
+=> output\\watch-history-small.videos.reviewed.spotify.rich.doubt.json
+=> output\\errors\\watch-history-small.videos.reviewed.spotify.rich.errors.json
 
-#6 - generate the CSV report for the songs and/or videos in doubt, fill it in, then import it back
+#5 - generate the CSV report for the songs and/or videos in doubt, fill it in, then import it back
 python reporter.py --file output\\watch-history-small.songs.spotify.rich.doubt.json --import --export
 => output\\watch-history-small.songs.spotify.rich.doubt.validator.csv
 => output\\ok\\watch-history-small.songs.spotify.rich.doubt.validated.json
 => output\\errors\\watch-history-small.songs.spotify.rich.doubt.invalid.json
 
-python reporter.py --file output\\watch-history-small.videos.spotify.rich.doubt.json --import --export
-=> output\\watch-history-small.videos.spotify.rich.doubt.validator.csv
-=> output\\ok\\watch-history-small.videos.spotify.rich.doubt.validated.json
-=> output\\errors\\watch-history-small.videos.spotify.rich.doubt.invalid.json
+python reporter.py --file output\\watch-history-small.videos.reviewed.spotify.rich.doubt.json --import --export
+=> output\\watch-history-small.videos.reviewed.spotify.rich.doubt.validator.csv
+=> output\\ok\\watch-history-small.videos.reviewed.spotify.rich.doubt.validated.json
+=> output\\errors\\watch-history-small.videos.reviewed.spotify.rich.doubt.invalid.json
 
-#7 - use the successfully created files from output\\ok directory
+#6 - use the successfully created files from output\\ok directory
 - output\\ok\\watch-history-small.songs.spotify.rich.ok.json
-- output\\ok\\watch-history-small.videos.spotify.rich.ok.json
+- output\\ok\\watch-history-small.videos.reviewed.spotify.rich.ok.json
 - output\\ok\\watch-history-small.songs.spotify.rich.doubt.validated.json
-- output\\ok\\watch-history-small.videos.spotify.rich.doubt.validated.json
+- output\\ok\\watch-history-small.videos.reviewed.spotify.rich.doubt.validated.json
 - any errored files that you re-process manually later
 
 ```
