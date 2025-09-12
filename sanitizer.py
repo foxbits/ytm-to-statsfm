@@ -23,8 +23,7 @@ def sanitize_video_track_info(track_name: str, artist_name: str) -> tuple[str, s
     
     # Remove official tags from title
     officialTagsStripping = [
-        r"([-|]\s*)?\((?:Official.*)\)(?:\s*[-|])?",
-        r"([-|]\s*)?\(?(?:Official Music Video|Official Lyric Video|Official Visual Video|Official Video|Official Audio|Official Track|Official|Videoclip Oficial|Videoclip)\)?(?:\s*[-|])?"
+        r"([-|]\s*)?\(?(?:Official Music Video|Music Video|Official Lyric Video|Official Visual Video|Official Video|Official Audio|Official Track|Official|Videoclip Oficial|Video Oficial|Videoclip|Visualizer|Audio)\)?(?:\s*[-|])?"
     ]
     for pattern in officialTagsStripping:
         track_name = re.sub(pattern, "", track_name, flags=re.IGNORECASE).strip()
