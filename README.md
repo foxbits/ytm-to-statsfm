@@ -283,7 +283,8 @@ This is a wrapper around the previous steps, intended to be used as an all-in-on
 How to use:
 1. Run `python converter-aio.py --file watch-history.json`
    1. You can use `--ignore-videos` if you want to ignore the music videos found in the YouTube Music history (as specified in the individual steps and in [Caveats / Troubleshooting]((#4-caveats--troubleshooting))); YouTube videos are ignored by default
-   2. You can use `--skip-**` instructions to skip certain steps of the process (simulate individual steps or only run from a certain step forward):
+   2. You can use `--use-pause` if you want to pause after each step
+   3. You can use `--skip-**` instructions to skip certain steps of the process (simulate individual steps or only run from a certain step forward):
       1. `--skip-sanitize` - skip first step (history sanitization)
       2. `--skip-convert` - skip second step (conversion of history to spotify file format)
       3. `--skip-enrich` - skip third step (data enrichment from Spotify API)
