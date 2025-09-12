@@ -2,6 +2,7 @@ This repo contains a set of python scripts that allow you to **convert** the **Y
 
 It is based on a multi-step process:
 1. data sanitization (automatic)
+   1. [optional] music videos review (manual)
 2. data conversion to the Spotify listening history format (automatic)
 3. data enrichment using the official Spotify Search API (to find to actual spotify track ids, which are mandatory) (automatic)
 4. matched track score analysis in case of multiple track matches in a single search (semi-automatic)
@@ -18,6 +19,7 @@ Each step of the process is available as a standalone script, in order to allow 
   - [1.3 Setting the environment variables](#13-setting-the-environment-variables)
 - [2. Processing the History (Individual Scripts)](#2-processing-the-history-individual-scripts)
   - [2.1. Data Sanitization](#21-data-sanitization)
+    - [2.1.1 Music Videos Review](#211-music-videos-review)
   - [2.2 Data Conversion to Spotify listening history format](#22-data-conversion-to-spotify-listening-history-format)
   - [2.3 Data enrichment using the official Spotify Search API](#23-data-enrichment-using-the-official-spotify-search-api)
   - [2.4 Matched track score analysis](#24-matched-track-score-analysis)
@@ -107,6 +109,35 @@ The following env vars are used to populate some default fields that are require
 5. At the end of this process you will have 1/2/3 json files that you can use for the next step
 
 
+#### 2.1.1 Music Videos Review
+
+In the previous step, if you did not choose to `--ignore-videos` and if you have music videos watched in your YTM (since you can listen to both songs and music videos on it), then there is a `*.videos.json` file generated which contains tracks which are music videos and might have wrong names (due to the fact that artists or uploaders use non-deterministic ways of naming their music videos, as opposed to standard song tracks from music streaming apps).
+
+This step facilitates two functions: 
+- exporting a **CSV report** which contains, as rows, all the different (artist, track) combinations identified in the music videos list, with the following columns:
+  - **original_title**: the original video title as found in the YouTube Music listening history
+  - **original_channel**: the original channel name as found in the YouTube Music listening history
+  - **title**: title that the script tried to identify (by trying to "guess" it from the video title)
+  - **artist**: artist that the script tried to identify (by trying to "guess" it from the video title / channel name)
+  - **new_title**: here you can correct the actual song title if identified incorrectly (initially it will be the same as *title*)
+  - **new_artist**: here you can correct the actual song artist if identified incorrectly (initially it will be the same as *artist*)
+- importing the same **CSV report** with the `new_title` and `new_artist` columns reviewed by you for all rows 
+
+
+How to use it:
+
+1. Run `python reporter-videos.py --file output\\<your-file>.videos.json --export --import`
+   - `--file` flag allows specifying the json file to process; this should be the `*.videos.json` file generated at previous step
+   - `--export` flag specifies to the script to execute the export step
+   - `--import` flag specifies to the script to execute the import step (if both are specified, first the export is done, then the script waits for user input, then the import is done);
+2. The script will generate a CSV file (`output\\<your-file>.validator.csv`) in the format described above and then it will wait for user input (RETURN key, do not press it!)
+3. The script will automatically open the CSV file for you; you have to review, for all rows, the `new_title` and `new_artist` columns. Also, if some rows are actually *playlists*-type videos, you can **delete** the respective row. You can actually delete *any* row and that entry will **not** be imported back.
+4. The user (you) must press the RETURN key in the script window once you filled in all rows; the script now will read back the CSV and validate the user's (your) choices
+   - make sure you have filled in the CSV correctly, otherwise there will be errors
+   - make sure that the json file and the csv file are in the same directory (if running the script manually or on custom files / directories)
+   - do not change the `artist` and `title` columns as the *matching* back with the original CSV is done based on them 
+5.  The script will generate a new file `output\\<your-file>.videos.reviewed.json`, which can be used as input in the next step
+
 
 ### 2.2 Data Conversion to Spotify listening history format
 
@@ -193,46 +224,49 @@ How to use it:
 #1 - sanitize and split input
 python sanitizer.py --file watch-history-small.json
 => output\\watch-history-small.songs.json,
-=> output\\watch-history-small.videos.json
+=> output\\watch-history-small.videos.json (if videos enabled)
 => output\\errors\\watch-history-small.errors.json
+
+#1.1 - review the videos file (if videos enabled)
+python reporter-videos.py --file output\\watch-history-small.videos.json --export --import
+=> output\\watch-history-small.videos.validator.csv
+=> output\\watch-history-small.videos.reviewed.json
 
 #2 - convert the songs
 python converter.py --file output\\watch-history-small.songs.json 
 => output\\watch-history-small.songs.spotify.json
 
-#3 - manually double check the videos json output\\watch-history-small.videos.json
+#3 - convert the music videos
+python converter.py --file output\\watch-history-small.videos.validated.json
+=> output\\watch-history-small.videos.reviewed.spotify.json
 
-#4 - convert the music videos
-python converter.py --file output\\watch-history-small.videos.json
-=> output\\watch-history-small.videos.spotify.json
-
-#5 - enrich the songs and/or videos with spotify track data
+#4 - enrich the songs and/or videos with spotify track data
 python enricher.py --file output\\watch-history-small.songs.spotify.json
 => output\\ok\\watch-history-small.songs.spotify.rich.ok.json
 => output\\watch-history-small.songs.spotify.rich.doubt.json
 => output\\errors\\watch-history-small.songs.spotify.rich.errors.json
 
-python enricher.py --file output\\watch-history-small.videos.spotify.json
-=> output\\ok\\watch-history-small.videos.spotify.rich.ok.json
-=> output\\watch-history-small.videos.spotify.rich.doubt.json
-=> output\\errors\\watch-history-small.videos.spotify.rich.errors.json
+python enricher.py --file output\\watch-history-small.videos.reviewed.spotify.json
+=> output\\ok\\watch-history-small.videos.reviewed.spotify.rich.ok.json
+=> output\\watch-history-small.videos.reviewed.spotify.rich.doubt.json
+=> output\\errors\\watch-history-small.videos.reviewed.spotify.rich.errors.json
 
-#6 - generate the CSV report for the songs and/or videos in doubt, fill it in, then import it back
+#5 - generate the CSV report for the songs and/or videos in doubt, fill it in, then import it back
 python reporter.py --file output\\watch-history-small.songs.spotify.rich.doubt.json --import --export
 => output\\watch-history-small.songs.spotify.rich.doubt.validator.csv
 => output\\ok\\watch-history-small.songs.spotify.rich.doubt.validated.json
 => output\\errors\\watch-history-small.songs.spotify.rich.doubt.invalid.json
 
-python reporter.py --file output\\watch-history-small.videos.spotify.rich.doubt.json --import --export
-=> output\\watch-history-small.videos.spotify.rich.doubt.validator.csv
-=> output\\ok\\watch-history-small.videos.spotify.rich.doubt.validated.json
-=> output\\errors\\watch-history-small.videos.spotify.rich.doubt.invalid.json
+python reporter.py --file output\\watch-history-small.videos.reviewed.spotify.rich.doubt.json --import --export
+=> output\\watch-history-small.videos.reviewed.spotify.rich.doubt.validator.csv
+=> output\\ok\\watch-history-small.videos.reviewed.spotify.rich.doubt.validated.json
+=> output\\errors\\watch-history-small.videos.reviewed.spotify.rich.doubt.invalid.json
 
-#7 - use the successfully created files from output\\ok directory
+#6 - use the successfully created files from output\\ok directory
 - output\\ok\\watch-history-small.songs.spotify.rich.ok.json
-- output\\ok\\watch-history-small.videos.spotify.rich.ok.json
+- output\\ok\\watch-history-small.videos.reviewed.spotify.rich.ok.json
 - output\\ok\\watch-history-small.songs.spotify.rich.doubt.validated.json
-- output\\ok\\watch-history-small.videos.spotify.rich.doubt.validated.json
+- output\\ok\\watch-history-small.videos.reviewed.spotify.rich.doubt.validated.json
 - any errored files that you re-process manually later
 
 ```
@@ -249,7 +283,8 @@ This is a wrapper around the previous steps, intended to be used as an all-in-on
 How to use:
 1. Run `python converter-aio.py --file watch-history.json`
    1. You can use `--ignore-videos` if you want to ignore the music videos found in the YouTube Music history (as specified in the individual steps and in [Caveats / Troubleshooting]((#4-caveats--troubleshooting))); YouTube videos are ignored by default
-   2. You can use `--skip-**` instructions to skip certain steps of the process (simulate individual steps or only run from a certain step forward):
+   2. You can use `--use-pause` if you want to pause after each step
+   3. You can use `--skip-**` instructions to skip certain steps of the process (simulate individual steps or only run from a certain step forward):
       1. `--skip-sanitize` - skip first step (history sanitization)
       2. `--skip-convert` - skip second step (conversion of history to spotify file format)
       3. `--skip-enrich` - skip third step (data enrichment from Spotify API)
@@ -258,7 +293,8 @@ How to use:
 2. Follow the instruction on screen
    1. any errors will stop the process and it needs to be started again
    2. at some points there will be instructions on screen which require manual intervention
-   3. to understand how to fill in the CSV from the last step, see [2.4 Matched track score analysis](#24-matched-track-score-analysis)
+   3. to understand how to review the CSV from step 3, see [2.1.1 Music Videos Review](#211-music-videos-review)
+   4. to understand how to fill in the CSV from the last step, see [2.4 Matched track score analysis](#24-matched-track-score-analysis)
 3. At the end, a small report will be printed to the screen (the full log trail can be also found inside `output\\logs.txt`), the main points are:
    1. the *successfully converted files* - these can be used ✅
    2. the *error files* - these are errors and need to be verified, manually edited and re-processed from the failed step:
