@@ -236,5 +236,5 @@ if __name__ == "__main__":
         updated_entries = apply_csv_changes(entries, csv_rows)
 
         # Save updated entries back to JSON
-        export_to_json(updated_entries, input_file, suffix="corrected")        
+        export_to_json(updated_entries, input_file, suffix="validated")        
         print_log(f"Processing complete. {len(updated_entries)} entries processed.")
