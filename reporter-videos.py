@@ -198,8 +198,11 @@ if __name__ == "__main__":
         
         if report:
             # Export to file
-            export_to_csv(report, input_file, suffix="validator")
+            csv_file = export_to_csv(report, input_file, suffix="validator")
             print_log("CSV export completed. You can now edit the 'new_title' and 'new_artist' columns.")
+            
+            # Open the CSV file in the default application
+            open_file(csv_file)
         else:
             print_log("Failed to generate report")
             exit(1)
@@ -207,9 +210,6 @@ if __name__ == "__main__":
     if do_import:
         # CSV file uses name convention <input-file>.validator.csv
         csv_file = generate_output_filename(input_file, suffix="validator", new_extension=".csv")
-
-        # Open the CSV file in the default application
-        open_file(csv_file)
 
         # Wait for user input to continue
         print("Please edit the 'new_title' and 'new_artist' columns in the validator CSV file.")

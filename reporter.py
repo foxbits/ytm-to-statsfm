@@ -204,14 +204,14 @@ if __name__ == "__main__":
         report = build_choice_report_clear(entries, score_tracks_by)
 
         # Export to file
-        export_to_csv(report, input_file, suffix="validator")
+        csv_file = export_to_csv(report, input_file, suffix="validator")
+
+        # Open the CSV file in the default application
+        open_file(csv_file)
 
     if do_import:
         # csv file uses name convention <input-file>.validator.csv
         csv_file = generate_output_filename(input_file, suffix="validator", new_extension=".csv")
-
-        # Open the CSV file in the default application
-        open_file(csv_file)
 
         # Wait for user input to continue
         print("Please make sure you have filled the choices in the 'validator' CSV.\n"
