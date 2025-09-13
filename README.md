@@ -29,6 +29,7 @@ Each step of the process is available as a standalone script, in order to allow 
 - [5. Example of the same song in the 2 different formats](#5-example-of-the-same-song-in-the-2-different-formats)
   - [5.1 YouTube (Music) listening history (INPUT)](#51-youtube-music-listening-history-input)
   - [5.2 Spotify listening history (OUTPUT)](#52-spotify-listening-history-output)
+  - [5.3 Spotify Track to Spotify listening history (with metadata) format](#53-spotify-track-to-spotify-listening-history-with-metadata-format)
 
 
 ## 1. Pre-requisites
@@ -189,29 +190,28 @@ In the previous step, there is a `*.doubt.json` file generated which contains tr
 
 This step facilitates two functions: 
 - exporting a **CSV report** which contains, as rows, all the entries from the listening history that could not be safely matched, as well as a column with all the potential matches (numbered list) and their details (score, artist, track):
-  - **id**: incremental number, id of each row (corresponding to the id of the ordered tracks from the json in order of appeareance)
   - **original_track**: the original track name as found in the YouTube Music listening history
   - **original_artist**: the original artist name as found in the YouTube Music listening history
   - **your_choice**: 
     - a number from the `choices` column representing the track number from the possible matches list that you consider a correct match
     - `1` <= `number of possible matches` <= `SPOTIFY_SEARCH_RESULTS_LIMIT`
-    - use `-1` if you consider that none of the matches are correct and the song should not be used in the listening history; if no result from the list seems correct, it might mean that the song does not exist in Spotify
+    - use `-1` if you consider that none of the matches are correct and the song should not be used in the listening history or it should be reprocessed later; if no result from the list seems correct, it might mean that the song does not exist in Spotify, but if you *know better* that the song is actually on spotify, you can reprocess it - see [4. Caveats / Troubleshooting](#4-caveats--troubleshooting) 
   - **choices**: a list of songs, one per row, that have been returned by Spotify as potential matches for the current track in the format `<id>. (<score>)<artist> - <track>`
 - importing the same **CSV report** with the `your_choice` column correctly populated for all rows 
 
 
 How to use it:
 
-1. Run `python reporter.py --file output\\<your-file>.rich.doubt.json --export --import`
+1. Run `python reporter.py --file output\\*.doubt.json --export --import`
    - `--file` flag allows specifying the json file to process; this should be the `.doubt.json` file generated at previous step
    - `--export` flag specifies to the script to execute the export step
    - `--import` flag specifies to the script to execute the import step (if both are specified, first the export is done, then the script waits for user input, then the import is done);
-2. The script will generate a CSV file (`output\\<your-file>.rich.doubt.validator.csv`) in the format described above and then it will wait for user input (RETURN key, do not press it!)
+2. The script will generate a CSV file (`output\\*.doubt.validator.csv`) in the format described above and then it will wait for user input (RETURN key, do not press it!)
 3. The script will automatically open the CSV file for you; you have to fill in, for all rows, the `your_choice` column with a valid number
 4. The user (you) must press the RETURN key in the script window once you filled in all rows; the script now will read back the CSV and validate the user's (your) choices
    - make sure you have filled in the CSV correctly, otherwise there will be errors
    - make sure that the json file and the csv file are in the same directory (if running the script manually or on custom files / directories)
-   - do not change the order of rows from the CSV; do not change the order of rows from the JSON; do not change the order of tracks from the JSON
+   - do not change the artist and title columns from the CSV, they are used to match entries to the original `json` file
 5.  The script will generate:
     - a new file `output\\ok\\<your-file>.rich.doubt.validated.json`, this file can be directly used as final ✅
     - a new file `output\\errors\\<your-file>.rich.doubt.invalid.json`, containing items marked as not matched in the CSV - this file cannot be used as final ❌
@@ -294,7 +294,7 @@ How to use:
    1. any errors will stop the process and it needs to be started again
    2. at some points there will be instructions on screen which require manual intervention
    3. to understand how to review the CSV from step 3, see [2.1.1 Music Videos Review](#211-music-videos-review)
-   4. to understand how to fill in the CSV from the last step, see [2.4 Matched track score analysis](#24-matched-track-score-analysis)
+   4. to understand how to fill in the CSV from the last step or modify wrong results, see [2.4 Matched track score analysis](#24-matched-track-score-analysis)
 3. At the end, a small report will be printed to the screen (the full log trail can be also found inside `output\\logs.txt`), the main points are:
    1. the *successfully converted files* - these can be used ✅
    2. the *error files* - these are errors and need to be verified, manually edited and re-processed from the failed step:
@@ -313,7 +313,7 @@ How to use:
    As you know, on YT Music you can both listen to songs and watch videos (which are basically YouTube videos). 
    These videos often do not have standard track artist / title naming format and usually put everything in the title (since they are YT videos) - e.g. "Artist - Song | Official Audio" and other variations. This means that the script has to do some non-deterministic guessing as in what's the artist and the song title in such videos, which often fails if you want a lot of music videos with non-standard formatting. Therefore, you can choose to ignore such videos watched on YT Music (note: videos watched on YouTube itself are automatically ignored). If you choose not to ignore them, the script tries to sanitize them as best as it can, following the format <artist-name><split-chars><song-title> and stripping any Official* (with/without paranthesis) from the song
 4. In case of rapidfuzz related errors, get the latest build version from [here](https://www.piwheels.org/project/rapidfuzz/) and install it with `pip install rapidfuzz==<version> --force-reinstall --no-deps`
-5. For files that end-up with errors (listed in previous steps), they cannot be retried if you don't edit anything in the process:
+5. For files that end-up with errors (listed in previous steps), they cannot be retried if you don't edit anything in the process (don't expect different results when doing the same thing over and over again). But, what you can do, depending on the failing step:
       1. `<your-file>.errors.json` => failed at **sanitize** step
          1. if you want to retry this, you have to manually edit this file to make sure it has valid artist (`subtitles[0].name` - `<artist> - Topic` format) and track name (`title` - `Watched <track-name>` format)
          2. after fixing the file, restart it from step 1, using the file as input file
@@ -322,11 +322,12 @@ How to use:
          2. technically they can be retried without changing the file, since it's usually Spotify's fault
          3. but certain errors might be due to weird entries in history and might require track name (`master_metadata_track_name`) / artist (`master_metadata_album_artist_name`) edit
       3. `<your-file>.[songs|videos].spotify.rich.doubt.invalid.json` => marked as not matched at **score analysis** step
-         1. most likely this file cannot be retried
-         2. it means Spotify returned some tracks as possible matches that you marked as incorrect (you didn't find any of the results correct)
-         3. if the input track name (`master_metadata_track_name`) and artist (`master_metadata_album_artist_name`) are correct, then it means Spotify really doesn't have the track
-         4. if the input track name and artist are incorrect, then edit them end retry the file from the **enrich** step
-         5. what you can also try is to increase the `SPOTIFY_SEARCH_RESULTS_LIMIT` to make Spotify return more results
+         1. it means Spotify returned some tracks as possible matches that you marked as incorrect (you didn't find any of the results correct)
+         2. if the input track name (`master_metadata_track_name`) and artist (`master_metadata_album_artist_name`) (from the source json) are correct, then it means Spotify really doesn't have the track
+         3. if the input track name and artist are incorrect, then edit them end retry the file (this `*.invalid.json` file) from the **enrich** step (feeding it as input)
+         4. what you can also try is to increase the `SPOTIFY_SEARCH_RESULTS_LIMIT` to make Spotify return more results
+         5. (technical) (manual) as a *hack*, you can actually manually edit the reference file `output\\*.invalid.json` file by finding the track name (there will be multiple entries, since it's listening history!), and in `metadata -> tracks` add a new object at first position with the Spotify Track details (see how to fill it in by looking at the example from [5.3 Spotify Track to Spotify listening history (with metadata) format], which has a single track entry) and then, in the CSV, use as choice `1` (the first track from the list, e.g. what you just added)
+      4. Hint: It is recommended to do some cleanup in the `output` directory when starting to reprocess error files - move them to the root directory and delete the rest of the files (besides the `ok` directory, or back that up since that one contains the final output). Once using them as input, their respective output will start generating in the output directory.
 
 
 ## 5. Example of the same song in the 2 different formats
@@ -382,5 +383,59 @@ How to use:
     "offline_timestamp": null,
     "incognito_mode": false,
     "metadata": {}
+  }
+```
+
+### 5.3 Spotify Track to Spotify listening history (with metadata) format
+
+Let's assumee the following Spotify Track: [Sweedish House Mafia, The Weeknd - Moth to a flame](https://open.spotify.com/track/7kfOEMJBJwdCYqyJeEnNhr).
+
+The Spotify data, with a single Spotify Search result with exact match and a single track, for it, would be:
+```
+{
+    "ts": "2025-07-16T20:40:31.824Z",
+    "platform": "ios",
+    "ms_played": 234000,
+    "conn_country": "US",
+    "ip_addr": "127.0.0.1",
+    "master_metadata_track_name": "Moth To A Flame (with The Weeknd)",
+    "master_metadata_album_artist_name": "Swedish House Mafia, The Weeknd",
+    "master_metadata_album_album_name": "Moth To A Flame",
+    "spotify_track_uri": "spotify:track:7kfOEMJBJwdCYqyJeEnNhr",
+    "episode_name": null,
+    "episode_show_name": null,
+    "spotify_episode_uri": null,
+    "audiobook_title": null,
+    "audiobook_uri": null,
+    "audiobook_chapter_uri": null,
+    "audiobook_chapter_title": null,
+    "reason_start": "playbtn",
+    "reason_end": "trackdone",
+    "shuffle": null,
+    "skipped": false,
+    "offline": false,
+    "offline_timestamp": null,
+    "incognito_mode": false,
+    "metadata": {
+      "tracks": [
+         {
+          "id": "7kfOEMJBJwdCYqyJeEnNhr",
+          "name": "Moth To A Flame (with The Weeknd)",
+          "album_name": "Moth To A Flame",
+          "duration_ms": 234000,
+          "artist_name": "Swedish House Mafia, The Weeknd",
+          "exact_search_match": true,
+          "match_score": {
+            "track_score": 100.00,
+            "artist_score": 100.00,
+            "equal_weight": 100.00,
+            "track_heavy": 100.00,
+            "artist_heavy": 100.00,
+            "min_score": 100.00,
+            "max_score": 100.00
+          }
+        },
+      ]
+    }
   }
 ```

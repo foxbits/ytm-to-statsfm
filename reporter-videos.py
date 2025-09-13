@@ -58,9 +58,10 @@ def get_unique_combinations(entries: List[Dict]) -> List[Dict]:
     unique_combinations = {}
     
     for entry in entries:
-        artist = entry.get('artist', '')
-        title = entry.get('title', '')
-        
+        # in order to match with CSV data, they need to be defined unique as exported in csv - e.g. no commas
+        artist = sanitize_for_csv(entry.get('artist', ''))
+        title = sanitize_for_csv(entry.get('title', ''))
+
         # Create a key for uniqueness
         key = (artist, title)
         
@@ -128,11 +129,9 @@ def apply_csv_changes(entries: List[Dict], csv_rows: List[List[str]]) -> List[Di
     
     for row in csv_rows[1:]:  # Skip header
         if len(row) < 6:
-            print_log(f"Skipping invalid CSV row: {row}")
-            continue
+            print_log(f"Invalid CSV row: {row}")
+            exit(1)
         
-        original_title = row[0]
-        original_channel = row[1]
         title = row[2]
         artist = row[3]
         new_title = row[4]
@@ -237,5 +236,5 @@ if __name__ == "__main__":
 
         # Save updated entries back to JSON
         export_to_json(updated_entries, input_file, suffix="reviewed")
-        
+
         print_log(f"Processing complete. {len(updated_entries)} entries processed.")
