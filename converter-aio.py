@@ -57,9 +57,12 @@ def main():
     parser = argparse.ArgumentParser(description="All-in-one YouTube Music to Spotify converter pipeline")
     parser.add_argument("--file", required=True, help="Input JSON file with YouTube Music watch history")
     parser.add_argument("--skip-sanitize", action="store_true", help="Skip sanitization step (if already done)")
+    parser.add_argument("--skip-sanitize-export", action="store_true", help="Skip sanitization - videos CSV generation step (if you already exported it)")
     parser.add_argument("--skip-convert", action="store_true", help="Skip conversion steps (if already done)")
     parser.add_argument("--skip-enrich", action="store_true", help="Skip enrichment steps (if already done)")
-    parser.add_argument("--skip-report", action="store_true", help="Skip report generation (if already done)")
+    parser.add_argument("--skip-report", action="store_true", help="Skip matched track analysis (import+export) (if already done)")
+    parser.add_argument("--skip-songs-report-export", action="store_true", help="Skip matched track analysis export (CSV report generation) for songs (if you already exported it)")
+    parser.add_argument("--skip-videos-report-export", action="store_true", help="Skip matched track analysis export (CSV report generation) for videos (if you already exported it)")
     parser.add_argument("--ignore-videos", action="store_true", help="Specify in order to ignore videos watched on YouTube Music and process only songs")
     parser.add_argument("--use-pause", action="store_true", help="Specify in order to pause between each step")
     
@@ -126,7 +129,10 @@ def main():
         if has_videos:
             # Step 3: Manual Review of Videos File
             print_title("STEP 3: Manual Review of Videos File")
-            cmd = f"python reporter-videos.py --file {sanitized_videos} --export --import"
+            cmd = f"python reporter-videos.py --file {sanitized_videos} --import"
+            if not args.skip_sanitize_export:
+                cmd += " --export"
+            
             run_command(cmd, "Reviewing and validating videos file")
         
         has_videos = check_file_exists(sanitized_validated_videos)
@@ -199,7 +205,10 @@ def main():
         # Report for songs
         has_songs = check_file_exists(enriched_songs_doubt)
         if has_songs:
-            cmd = f"python reporter.py --file {enriched_songs_doubt} --export --import"
+            cmd = f"python reporter.py --file {enriched_songs_doubt} --import"
+            if not args.skip_songs_report_export:
+                cmd += " --export"
+            
             run_command(cmd, "Generating CSV analysis / reporting for songs doubt cases")
 
             if check_file_exists(validated_songs):
@@ -211,7 +220,10 @@ def main():
         # Report for videos
         has_videos = check_file_exists(enriched_videos_doubt)
         if has_videos:
-            cmd = f"python reporter.py --file {enriched_videos_doubt} --export --import"
+            cmd = f"python reporter.py --file {enriched_videos_doubt} --import"
+            if not args.skip_videos_report_export:
+                cmd += " --export"
+            
             run_command(cmd, "Generating CSV analysis / reporting for videos doubt cases")
 
             if check_file_exists(validated_videos):

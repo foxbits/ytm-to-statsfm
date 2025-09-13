@@ -129,10 +129,10 @@ How to use it:
 
 1. Run `python reporter-videos.py --file output\\<your-file>.videos.json --export --import`
    - `--file` flag allows specifying the json file to process; this should be the `*.videos.json` file generated at previous step
-   - `--export` flag specifies to the script to execute the export step
+   - `--export` flag specifies to the script to execute the export step (CSV file generation)
    - `--import` flag specifies to the script to execute the import step (if both are specified, first the export is done, then the script waits for user input, then the import is done);
-2. The script will generate a CSV file (`output\\<your-file>.validator.csv`) in the format described above and then it will wait for user input (RETURN key, do not press it!)
-3. The script will automatically open the CSV file for you; you have to review, for all rows, the `new_title` and `new_artist` columns. Also, if some rows are actually *playlists*-type videos, you can **delete** the respective row. You can actually delete *any* row and that entry will **not** be imported back.
+2. [if export is enabled] The script will generate a CSV file (`output\\<your-file>.validator.csv`) in the format described above and then it will wait for user input (RETURN key, do not press it!)
+3. [if export is enabled] The script will automatically open the CSV file for you; you have to review, for all rows, the `new_title` and `new_artist` columns. Also, if some rows are actually *playlists*-type videos, you can **delete** the respective row. You can actually delete *any* row and that entry will **not** be imported back.
 4. The user (you) must press the RETURN key in the script window once you filled in all rows; the script now will read back the CSV and validate the user's (your) choices
    - make sure you have filled in the CSV correctly, otherwise there will be errors
    - make sure that the json file and the csv file are in the same directory (if running the script manually or on custom files / directories)
@@ -204,10 +204,10 @@ How to use it:
 
 1. Run `python reporter.py --file output\\*.doubt.json --export --import`
    - `--file` flag allows specifying the json file to process; this should be the `.doubt.json` file generated at previous step
-   - `--export` flag specifies to the script to execute the export step
+   - `--export` flag specifies to the script to execute the export step (CSV file generation)
    - `--import` flag specifies to the script to execute the import step (if both are specified, first the export is done, then the script waits for user input, then the import is done);
-2. The script will generate a CSV file (`output\\*.doubt.validator.csv`) in the format described above and then it will wait for user input (RETURN key, do not press it!)
-3. The script will automatically open the CSV file for you; you have to fill in, for all rows, the `your_choice` column with a valid number
+2. [if export is enabled] The script will generate a CSV file (`output\\*.doubt.validator.csv`) in the format described above and then it will wait for user input (RETURN key, do not press it!)
+3. [if export is enabled] The script will automatically open the CSV file for you; you have to fill in, for all rows, the `your_choice` column with a valid number
 4. The user (you) must press the RETURN key in the script window once you filled in all rows; the script now will read back the CSV and validate the user's (your) choices
    - make sure you have filled in the CSV correctly, otherwise there will be errors
    - make sure that the json file and the csv file are in the same directory (if running the script manually or on custom files / directories)
@@ -286,10 +286,13 @@ How to use:
    2. You can use `--use-pause` if you want to pause after each step
    3. You can use `--skip-**` instructions to skip certain steps of the process (simulate individual steps or only run from a certain step forward):
       1. `--skip-sanitize` - skip first step (history sanitization)
-      2. `--skip-convert` - skip second step (conversion of history to spotify file format)
-      3. `--skip-enrich` - skip third step (data enrichment from Spotify API)
-      4. `--skip-report` - skips the final step (manual score matching - export & import)
-      5. `--use-pause` - if you want the script to pause and wait for user input after every major step
+      2. `--skip-sanitize-export` - (only if videos not ignored): skip music video CSV export generation (use only if you already previously generated the file but it was too big to fill in therefore you start the process at a later time from the import step)
+      3. `--skip-convert` - skip second step (conversion of history to spotify file format)
+      4. `--skip-enrich` - skip third step (data enrichment from Spotify API)
+      5. `--skip-report` - skips the final step (manual score matching - export & import)
+      6. `--skip-songs-report-export` - skip track score analysis CSV export generation for *songs* (use only if you already previously generated the file but it was too big to fill in therefore you start the process at a later time from the import step)
+      7. `--skip-videos-report-export` - (only if videos not ignored): skip track score analysis CSV export generation for *videos* (use only if you already previously generated the file but it was too big to fill in therefore you start the process at a later time from the import step)
+      8. `--use-pause` - if you want the script to pause and wait for user input after every major step
 2. Follow the instruction on screen
    1. any errors will stop the process and it needs to be started again
    2. at some points there will be instructions on screen which require manual intervention
