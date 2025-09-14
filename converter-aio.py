@@ -57,9 +57,13 @@ def main():
     parser = argparse.ArgumentParser(description="All-in-one YouTube Music to Spotify converter pipeline")
     parser.add_argument("--file", required=True, help="Input JSON file with YouTube Music watch history")
     parser.add_argument("--skip-sanitize", action="store_true", help="Skip sanitization step (if already done)")
+    parser.add_argument("--skip-sanitize-export", action="store_true", help="Skip sanitization - videos CSV generation step (if you already exported it)")
     parser.add_argument("--skip-convert", action="store_true", help="Skip conversion steps (if already done)")
     parser.add_argument("--skip-enrich", action="store_true", help="Skip enrichment steps (if already done)")
-    parser.add_argument("--skip-report", action="store_true", help="Skip report generation (if already done)")
+    parser.add_argument("--skip-songs-enrich", action="store_true", help="Skip song enrichment step (if already done)")
+    parser.add_argument("--skip-report", action="store_true", help="Skip matched track analysis (import+export) (if already done)")
+    parser.add_argument("--skip-songs-report-export", action="store_true", help="Skip matched track analysis export (CSV report generation) for songs (if you already exported it)")
+    parser.add_argument("--skip-videos-report-export", action="store_true", help="Skip matched track analysis export (CSV report generation) for videos (if you already exported it)")
     parser.add_argument("--ignore-videos", action="store_true", help="Specify in order to ignore videos watched on YouTube Music and process only songs")
     parser.add_argument("--use-pause", action="store_true", help="Specify in order to pause between each step")
     
@@ -101,6 +105,17 @@ def main():
         # Print error files if created
         if check_file_exists(sanitized_errors):
             error_files.append(sanitized_errors)
+        
+        # Manually review videos file if not ignoring videos
+        has_videos = check_file_exists(sanitized_videos)
+        if has_videos:
+            # Step 3: Manual Review of Videos File
+            print_title("STEP 3: Manual Review of Videos File")
+            cmd = f"python reporter-videos.py --file {sanitized_videos} --import"
+            if not args.skip_sanitize_export:
+                cmd += " --export"
+            
+            run_command(cmd, "Reviewing and validating videos file")
 
     if args.use_pause:
         input("Press Enter to continue to the next step...")
@@ -121,13 +136,6 @@ def main():
             print_title("STEP 2: Convert songs to Spotify format")
             cmd = f"python converter.py --file {sanitized_songs}"
             run_command(cmd, "Converting songs to Spotify format")
-        
-        has_videos = check_file_exists(sanitized_videos)
-        if has_videos:
-            # Step 3: Manual Review of Videos File
-            print_title("STEP 3: Manual Review of Videos File")
-            cmd = f"python reporter-videos.py --file {sanitized_videos} --export --import"
-            run_command(cmd, "Reviewing and validating videos file")
         
         has_videos = check_file_exists(sanitized_validated_videos)
         if has_videos:
@@ -156,17 +164,18 @@ def main():
     else:
         print_title("STEP 5: Enrich with Spotify track data")
 
-        # Enrich songs
-        has_songs = check_file_exists(spotified_songs)
-        if has_songs:
-            cmd = f"python enricher.py --file {spotified_songs}"
-            run_command(cmd, "Enriching songs with Spotify data")
+        if not args.skip_songs_enrich:
+            # Enrich songs
+            has_songs = check_file_exists(spotified_songs)
+            if has_songs:
+                cmd = f"python enricher.py --file {spotified_songs}"
+                run_command(cmd, "Enriching songs with Spotify data")
 
-            if check_file_exists(enriched_songs_ok):
-                ok_files.append(enriched_songs_ok)
-            
-            if check_file_exists(enriched_songs_errors):
-                error_files.append(enriched_songs_errors)
+                if check_file_exists(enriched_songs_ok):
+                    ok_files.append(enriched_songs_ok)
+                
+                if check_file_exists(enriched_songs_errors):
+                    error_files.append(enriched_songs_errors)
 
         # Enrich videos
         has_videos = check_file_exists(spotified_videos)
@@ -199,7 +208,10 @@ def main():
         # Report for songs
         has_songs = check_file_exists(enriched_songs_doubt)
         if has_songs:
-            cmd = f"python reporter.py --file {enriched_songs_doubt} --export --import"
+            cmd = f"python reporter.py --file {enriched_songs_doubt} --import"
+            if not args.skip_songs_report_export:
+                cmd += " --export"
+            
             run_command(cmd, "Generating CSV analysis / reporting for songs doubt cases")
 
             if check_file_exists(validated_songs):
@@ -211,7 +223,10 @@ def main():
         # Report for videos
         has_videos = check_file_exists(enriched_videos_doubt)
         if has_videos:
-            cmd = f"python reporter.py --file {enriched_videos_doubt} --export --import"
+            cmd = f"python reporter.py --file {enriched_videos_doubt} --import"
+            if not args.skip_videos_report_export:
+                cmd += " --export"
+            
             run_command(cmd, "Generating CSV analysis / reporting for videos doubt cases")
 
             if check_file_exists(validated_videos):

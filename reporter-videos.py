@@ -58,9 +58,10 @@ def get_unique_combinations(entries: List[Dict]) -> List[Dict]:
     unique_combinations = {}
     
     for entry in entries:
-        artist = entry.get('artist', '')
-        title = entry.get('title', '')
-        
+        # in order to match with CSV data, they need to be defined unique as exported in csv - e.g. no commas
+        artist = sanitize_for_csv(entry.get('artist', ''))
+        title = sanitize_for_csv(entry.get('title', ''))
+
         # Create a key for uniqueness
         key = (artist, title)
         
@@ -128,11 +129,9 @@ def apply_csv_changes(entries: List[Dict], csv_rows: List[List[str]]) -> List[Di
     
     for row in csv_rows[1:]:  # Skip header
         if len(row) < 6:
-            print_log(f"Skipping invalid CSV row: {row}")
-            continue
+            print_log(f"Invalid CSV row: {row}")
+            exit(1)
         
-        original_title = row[0]
-        original_channel = row[1]
         title = row[2]
         artist = row[3]
         new_title = row[4]
@@ -199,8 +198,11 @@ if __name__ == "__main__":
         
         if report:
             # Export to file
-            export_to_csv(report, input_file, suffix="validator")
+            csv_file = export_to_csv(report, input_file, suffix="validator")
             print_log("CSV export completed. You can now edit the 'new_title' and 'new_artist' columns.")
+            
+            # Open the CSV file in the default application
+            open_file(csv_file)
         else:
             print_log("Failed to generate report")
             exit(1)
@@ -208,9 +210,6 @@ if __name__ == "__main__":
     if do_import:
         # CSV file uses name convention <input-file>.validator.csv
         csv_file = generate_output_filename(input_file, suffix="validator", new_extension=".csv")
-
-        # Open the CSV file in the default application
-        open_file(csv_file)
 
         # Wait for user input to continue
         print("Please edit the 'new_title' and 'new_artist' columns in the validator CSV file.")
@@ -237,5 +236,5 @@ if __name__ == "__main__":
 
         # Save updated entries back to JSON
         export_to_json(updated_entries, input_file, suffix="reviewed")
-        
+
         print_log(f"Processing complete. {len(updated_entries)} entries processed.")

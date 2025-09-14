@@ -7,10 +7,12 @@ from dotenv import load_dotenv
 from matcher import score_spotify_entries
 from objects.process_metadata import ProcessingStatus
 from objects.spotify_processed_track import SpotifyProcessedTracks
+from spotify.constants import SPOTIFY_SHADY_PARTS
 from spotify.spotify_client import SpotifyClient
 from spotify.spotify_listening_history import SpotifyStreamingEntry
 from utils.file_utils import export_to_json
 from utils.simple_logger import print_log
+from ytm.constants import YTM_INVALID_ARTIST
 
 
 def read_spotify_entries(input_file: str) -> List[SpotifyStreamingEntry]:
@@ -64,8 +66,17 @@ def enrich_spotify_entries(entries: List[SpotifyStreamingEntry], spoticlient: Sp
             # Search for track (catches not found / rate limiting / unknown ex)
             print_log(f"Entry {i+1}/{total_entries}: Searching for '{entry.master_metadata_track_name}' by '{entry.master_metadata_album_artist_name}'")
 
+            # Cleanup track and artist names before search
+            search_track_name = entry.master_metadata_track_name.lower()
+            for shady_part in SPOTIFY_SHADY_PARTS:
+                search_track_name = search_track_name.replace(shady_part, "")
+            
+            search_artist_name = entry.master_metadata_album_artist_name.lower()
+            if search_artist_name == YTM_INVALID_ARTIST:
+                search_artist_name = ""
+        
             # Call Spotify Client 
-            tracks = spoticlient.search_track(entry.master_metadata_track_name, entry.master_metadata_album_artist_name)
+            tracks = spoticlient.search_track(search_track_name, search_artist_name)
             
             if len(tracks) > 0:
                 print_log(f"Entry {i+1}/{total_entries}:  ✓ Found {len(tracks)} tracks. First: {tracks[0].name} from album '{tracks[0].album_name}' with duration '{tracks[0].duration_ms}'")
