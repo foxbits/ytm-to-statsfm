@@ -115,8 +115,8 @@ class SpotifyClient:
         Otherwise it falls back to a broader search and  returns the first search_results_limit results
         """
         # Create cache key
-        cache_key = f"{track_name.lower()}||{artist_name.lower()}"
-        
+        cache_key = f"{track_name}||{artist_name}"
+
         # Check cache first
         if cache_key in self.cache:
             return self.cache[cache_key]

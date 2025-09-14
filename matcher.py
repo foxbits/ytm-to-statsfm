@@ -70,6 +70,8 @@ def score_spotify_entries(tracks: List[SpotifyStreamingEntry], score_by: str):
         print_log("No entries to process")
         return
     
+    print_log(f"Scoring {len(tracks)} entries by '{score_by}'")
+
     for track in tracks:
         for match in track.metadata.tracks:
             if match.exact_search_match:
@@ -84,6 +86,8 @@ def score_spotify_entries(tracks: List[SpotifyStreamingEntry], score_by: str):
         
         # Sort tracks by best match score (using equal_weight as default)
         track.metadata.tracks.sort(key=lambda x: getattr(x.match_score, score_by), reverse=True)
+    
+    print_log(f"Finished scoring {len(tracks)} entries")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Enrich Spotify streaming entries with metadata from Spotify API")
