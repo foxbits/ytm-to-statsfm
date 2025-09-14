@@ -190,13 +190,13 @@ In the previous step, there is a `*.doubt.json` file generated which contains tr
 
 This step facilitates two functions: 
 - exporting a **CSV report** which contains, as rows, all the entries from the listening history that could not be safely matched, as well as a column with all the potential matches (numbered list) and their details (score, artist, track):
-  - **original_track**: the original track name as found in the YouTube Music listening history
-  - **original_artist**: the original artist name as found in the YouTube Music listening history
   - **your_choice**: 
     - a number from the `choices` column representing the track number from the possible matches list that you consider a correct match
     - `1` <= `number of possible matches` <= `SPOTIFY_SEARCH_RESULTS_LIMIT`
     - use `-1` if you consider that none of the matches are correct and the song should not be used in the listening history or it should be reprocessed later; if no result from the list seems correct, it might mean that the song does not exist in Spotify, but if you *know better* that the song is actually on spotify, you can reprocess it - see [4. Caveats / Troubleshooting](#4-caveats--troubleshooting) 
   - **choices**: a list of songs, one per row, that have been returned by Spotify as potential matches for the current track in the format `<id>. (<score>)<artist> - <track>`
+  - **original_artist**: the original artist name as found in the YouTube Music listening history
+  - **original_track**: the original track name as found in the YouTube Music listening history
 - importing the same **CSV report** with the `your_choice` column correctly populated for all rows 
 
 

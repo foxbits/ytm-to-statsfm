@@ -57,10 +57,10 @@ def build_choice_report_clear(entries: List[SpotifyStreamingEntry], score_by: st
     report = ""
 
     # Add header
-    header = "original_track," \
+    header = "your_choice," \
+    "choices," \
     "original_artist," \
-    "your_choice," \
-    "choices"
+    "original_track" \
 
     report += f"{header}\n"
 
@@ -84,19 +84,19 @@ def build_choice_report_clear(entries: List[SpotifyStreamingEntry], score_by: st
 
         unique_combinations[key] = entry
 
-        row = f"{title}," \
-              f"{artist}," \
-              f"," # empty choice
+        row = f"," # empty choice
 
         row_choices = ""
         for j in range(len(entry.metadata.tracks)):
             track = entry.metadata.tracks[j]
             score = str(round(getattr(track.match_score, score_by), 2))
-            row_choices += f"{j + 1}. ({sanitize_for_csv(score)})" \
+            row_choices += f"{j + 1}. ({sanitize_for_csv(score)}) " \
                 f"{sanitize_for_csv(track.artist_name)} - " \
                 f"{sanitize_for_csv(track.name)}\n"
 
         row += f"\"{row_choices}\""
+        row += f",{artist}" \
+               f",{title}"
 
         report += f"{row}\n"
 
@@ -126,11 +126,11 @@ def import_choices(entries: List[SpotifyStreamingEntry], choices: List[str]) -> 
     artist_title_map = {}
     for i in range(1, len(choices)):  # Skip header
         choice_row = choices[i]
-        title = choice_row[0]
-        artist = choice_row[1]
+        artist = choice_row[2]
+        title = choice_row[3]
         
         try:
-            choice = int(choice_row[2])
+            choice = int(choice_row[0])
         except (ValueError, IndexError):
             print_log(f"Error: Invalid choice in row {i + 1}: '{choice_row[2]}'. Make sure it's a valid track number")
             exit(1)
