@@ -5,6 +5,9 @@ YT_MUSIC_HEADER = 'YouTube Music'
 # Everything not following this format is a MV
 YT_MUSIC_TRACK_IDENTIFIER = "- Topic"
 
+# Songs from listening history have the format "Watched <track-name>"
+YT_MUSIC_TRACK_TITLE_PREFIX = "Watched "
+
 # Characters that are used as artist-song splitters (only for videos watched on YTM)
 SPLIT_CHARACTERS = [r"-", r"💕"]
 
