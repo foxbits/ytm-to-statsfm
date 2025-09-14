@@ -289,6 +289,7 @@ How to use:
       2. `--skip-sanitize-export` - (only if videos not ignored): skip music video CSV export generation (use only if you already previously generated the file but it was too big to fill in therefore you start the process at a later time from the import step)
       3. `--skip-convert` - skip second step (conversion of history to spotify file format)
       4. `--skip-enrich` - skip third step (data enrichment from Spotify API)
+      4. `--skip-songs-enrich` - skip third step for songs (data enrichment from Spotify API)
       5. `--skip-report` - skips the final step (manual score matching - export & import)
       6. `--skip-songs-report-export` - skip track score analysis CSV export generation for *songs* (use only if you already previously generated the file but it was too big to fill in therefore you start the process at a later time from the import step)
       7. `--skip-videos-report-export` - (only if videos not ignored): skip track score analysis CSV export generation for *videos* (use only if you already previously generated the file but it was too big to fill in therefore you start the process at a later time from the import step)
