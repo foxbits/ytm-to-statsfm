@@ -197,10 +197,12 @@ This step facilitates two functions:
   - **your_choice**: 
     - a number from the `choices` column representing the track number from the possible matches list that you consider a correct match
     - `1` <= `number of possible matches` <= `SPOTIFY_SEARCH_RESULTS_LIMIT`
-    - use `-1` if you consider that none of the matches are correct and the song should not be used in the listening history or it should be reprocessed later; if no result from the list seems correct, it might mean that the song does not exist in Spotify, but if you *know better* that the song is actually on spotify, you can reprocess it - see [4. Caveats / Troubleshooting](#4-caveats--troubleshooting) 
+    - use `-1` if you consider that none of the matches are correct and the song should not be used in the listening history or it should be reprocessed later; if no result from the list seems correct, it might mean that the song does not exist in Spotify, but if you *know better* that the song is actually on spotify, see below `-2`
+    - use `-2` if you found the track manually on spotify and enter the Spotify Track URL in the `new_spotify_url` column
   - **choices**: a list of songs, one per row, that have been returned by Spotify as potential matches for the current track in the format `<id>. (<score>)<artist> - <track>`
   - **original_artist**: the original artist name as found in the YouTube Music listening history
   - **original_track**: the original track name as found in the YouTube Music listening history
+  - **new_spotify_url**: a spotify link for the song that will be used to override existing track data if `your_choice` is set to `-2`. Needs to be a valid Spotify URL in the format `https://open.spotify.com/track/<track_id>`
 - importing the same **CSV report** with the `your_choice` column correctly populated for all rows 
 
 
@@ -340,16 +342,8 @@ Note: when reprocessing a single file, use `--ignore-videos` as flag, otherwise 
    2. technically they can be retried without changing the file, since it's usually Spotify's fault or some network issue
    3. but certain errors might be due to weird entries in history and might require track name (`master_metadata_track_name`) / artist (`master_metadata_album_artist_name`) edits (very rare)
 3. `<your-file>.[songs|videos].spotify.rich.doubt.invalid.json` => marked as not matched at **score analysis** step
-   1. it means Spotify returned some tracks as possible matches that you marked as incorrect (you didn't find any of the results correct)
-   2. if the input track name (`master_metadata_track_name`) and artist (`master_metadata_album_artist_name`) (from the source json) are correct, then it means Spotify really doesn't have the track
-   3. if the input track name and artist are incorrect, then edit them end retry the file (this `*.invalid.json` file) from the **enrich** step (feeding it as input)
-   4. what you can also try is to increase the `SPOTIFY_SEARCH_RESULTS_LIMIT` to make Spotify return more results
-   5. after doing any changes, re-run the enrich step by using the edited (formerly invalid) file as input
-   6. (technical) (manual) as a *hack*, if you don't want to run the enricher again or if the enricher does really not find in the search results the track you expect: 
-         -  you can actually manually edit the reference file `output\\*.invalid.json` file by finding the track name (there will be multiple entries, since it's listening history!)
-         -  in the json entry for it, inside `metadata -> tracks` array, add a new object at first position with the Spotify Track details manually entered by yourself (see how to fill it in by looking at the example from [5.3 Spotify Track to Spotify listening history (with metadata) format](#53-spotify-track-to-spotify-listening-history-with-metadata-format), which has a single track entry)
-         -  then, in the CSV, use as choice `1` (the first track from the track list, e.g. what you just added)
-         -  use the CSV normally in the reporting step and it will mark your track as validated (by you)
+   1. it means Spotify returned some tracks as possible matches that you marked as incorrect (you didn't find any of the results correct and you also did not choose to use any manual spotify link import)
+   2. nothing can be done about these entries
 4. Hint: It is recommended to do some cleanup in the `output` directory when starting to reprocess error files - move them to the root directory and delete the rest of the files (besides the `ok` directory, or back that up since that one contains the final output). Once using them as input, their respective output will start generating in the output directory.
 
 

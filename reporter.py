@@ -4,6 +4,7 @@ import os
 import csv
 from typing import List
 from objects.process_metadata import ProcessingStatus
+from spotify.spotify_client import SpotifyClient
 from spotify.spotify_listening_history import SpotifyStreamingEntry
 from utils.file_utils import export_to_csv, export_to_json, generate_output_filename, open_file
 from utils.simple_logger import print_log
@@ -60,7 +61,8 @@ def build_choice_report_clear(entries: List[SpotifyStreamingEntry], score_by: st
     header = "your_choice," \
     "choices," \
     "original_artist," \
-    "original_track" \
+    "original_track," \
+    "new_spotify_url"
 
     report += f"{header}\n"
 
@@ -96,7 +98,8 @@ def build_choice_report_clear(entries: List[SpotifyStreamingEntry], score_by: st
 
         row += f"\"{row_choices}\""
         row += f",{artist}" \
-               f",{title}"
+               f",{title}" \
+               "," # empty spotify url
 
         report += f"{row}\n"
 
@@ -128,20 +131,23 @@ def import_choices(entries: List[SpotifyStreamingEntry], choices: List[str]) -> 
         choice_row = choices[i]
         artist = choice_row[2]
         title = choice_row[3]
+        manual_choice_url = choice_row[4]
         
         try:
             choice = int(choice_row[0])
         except (ValueError, IndexError):
-            print_log(f"Error: Invalid choice in row {i + 1}: '{choice_row[2]}'. Make sure it's a valid track number")
+            print_log(f"Error: Invalid choice in row {i + 1}: '{choice_row[2]}'. Make sure it's a valid track number, or the special numbers: -1, -2")
             exit(1)
         
         artist_title_map[(artist, title)] = {
-            "choice": choice
+            "choice": choice,
+            "manual_choice_url": manual_choice_url
         }
 
     # Process JSON entries and process based on CSV choices
     output_entries = []
     invalid_entries = []
+    spoticlient = SpotifyClient.from_env()
 
     for i in range(len(entries)):
         entry = entries[i]
@@ -155,13 +161,30 @@ def import_choices(entries: List[SpotifyStreamingEntry], choices: List[str]) -> 
 
         # Read choice from CSV mapping
         choice = -1
+        manual_choice_url = ""
         if key in artist_title_map:
             choice = artist_title_map[key]["choice"]
+            manual_choice_url = artist_title_map[key]["manual_choice_url"]
 
         if choice  == -1:
             print_log(f"Row {i + 1} was marked as no valid choices. It will be skipped.")
             entry.set_status_as_unmatched()
             invalid_entries.append(entry)
+            continue
+
+        if choice == -2:
+            print_log(f"Row {i + 1} was marked as manual choice. Trying to load the Spotify link.")
+
+            track_info = spoticlient.get_track_info(manual_choice_url)
+            if not track_info:
+                print_log(f"Error: Could not retrieve track info from URL '{manual_choice_url}' in row {i + 1}")
+                exit(1)
+            
+            entry.metadata.tracks = [track_info]
+            manual_choice_id = 0 # always zero / first
+            entry.set_status_as_matched(ProcessingStatus.FIXED, manual_choice_id)
+            entry.set_info_from_track(manual_choice_id)
+            output_entries.append(entry)
             continue
 
         if choice < 1 or choice > len(entry.metadata.tracks):

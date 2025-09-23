@@ -192,3 +192,48 @@ class SpotifyClient:
             # Cache negative result to avoid retrying
             self.cache[cache_key] = None
             raise e # raise to propagate error
+
+    def get_track_info(self, track_url: str) -> TrackInfo:
+        """
+        Get detailed track info from Spotify track URL
+        """
+        try:
+            # Extract track ID from URL
+            if "track/" not in track_url:
+                print_log(f"Invalid Spotify track URL: {track_url}")
+                return None
+
+            track_id = track_url.split("track/")[1].split("?")[0].strip()
+            if not track_id:
+                print_log(f"Could not extract track ID from URL: {track_url}")
+                return None
+            
+            # Check cache first
+            if track_id in self.cache:
+                return self.cache[track_id]
+            
+            # Fetch track info with rate limiting
+            track = self._make_spotify_request(self.spotify.track, track_id, market=self.market)
+            
+            if not track:
+                print_log(f"No track found for ID: {track_id}")
+                self.cache[track_id] = None
+                return None
+            
+            track_info = TrackInfo(
+                id=track['id'],
+                name=track['name'],
+                album_name=track['album']['name'],
+                duration_ms=track['duration_ms'],
+                artist_name=", ".join(artist['name'] for artist in track['artists']) if track['artists'] else "",
+                exact_search_match=True  # Direct fetch, so consider it an exact match
+            )
+            
+            # Cache the result
+            self.cache[track_id] = track_info
+            return track_info
+
+        except Exception as e:
+            print_log(f"Error fetching track info from URL '{track_url}': {e}")
+            self.cache[track_url] = None
+            raise e
