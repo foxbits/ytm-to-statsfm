@@ -288,17 +288,15 @@ This is a wrapper around the previous steps, intended to be used as an all-in-on
 How to use:
 1. Run `python converter-aio.py --file watch-history.json`
    1. You can use `--ignore-videos` if you want to ignore the music videos found in the YouTube Music history (as specified in the individual steps and in [Caveats / Troubleshooting]((#4-caveats--troubleshooting))); YouTube videos are ignored by default
-   2. You can use `--use-pause` if you want to pause after each step
-   3. You can use `--skip-**` instructions to skip certain steps of the process (simulate individual steps or only run from a certain step forward):
-      1. `--skip-sanitize` - skip first step (history sanitization)
-      2. `--skip-sanitize-export` - (only if videos not ignored): skip music video CSV export generation (use only if you already previously generated the file but it was too big to fill in therefore you start the process at a later time from the import step)
-      3. `--skip-convert` - skip second step (conversion of history to spotify file format)
-      4. `--skip-enrich` - skip third step (data enrichment from Spotify API)
-      4. `--skip-songs-enrich` - skip third step for songs (data enrichment from Spotify API)
-      5. `--skip-report` - skips the final step (manual score matching - export & import)
-      6. `--skip-songs-report-export` - skip track score analysis CSV export generation for *songs* (use only if you already previously generated the file but it was too big to fill in therefore you start the process at a later time from the import step)
-      7. `--skip-videos-report-export` - (only if videos not ignored): skip track score analysis CSV export generation for *videos* (use only if you already previously generated the file but it was too big to fill in therefore you start the process at a later time from the import step)
-      8. `--use-pause` - if you want the script to pause and wait for user input after every major step
+   2. You can use `--ignore-songs` if you want to process only the music videos found in the YouTube Music history (applies from Step 2 - Conversion, first step always does both)
+   3. You can use `--use-pause` if you want to pause after each step
+   4. You can use `--skip-**` instructions to skip certain steps of the process (simulate individual steps or only run from a certain step forward):
+      1. `--skip-sanitize` - skip first step (history sanitization); this includes video review as well
+      2. `--skip-convert` - skip second step (conversion of history to spotify file format)
+      3. `--skip-enrich` - skip third step (data enrichment from Spotify API)
+      4. `--skip-report` - skips the final step (manual score matching - export & import)
+      5. `--skip-sanitize-export` - skip *music video* CSV export generation (use only if you already previously generated the file but it was too big to fill in therefore you start the process at a later time from the import step directly)
+      6. `--skip-report-export` -skip track score analysis CSV export generation for *songs*/*videos* (use only if you already previously generated the file but it was too big to fill in therefore you start the process at a later time from the import step)
 2. Follow the instruction on screen
    1. any errors will stop the process and it needs to be started again
    2. at some points there will be instructions on screen which require manual intervention
@@ -329,12 +327,14 @@ I recommend you to test first with a small portion of your data (just pick a few
 
 ### 4.3 Eror reprocessing
 
-The errors files generated as output from any of the scripts (listening history entries that end up as errors), written in `output\\errors`, depending on the failing step, can be actioned as described below (based on error type / error step):
+The errors files generated as output from any of the scripts (listening history entries that end up as errors), written in `output\\errors`, depending on the failing step, can be actioned as described below (based on error type / error step).
+
+Note: when reprocessing a single file, use `--ignore-videos` as flag, otherwise the file will get processed two times, once as videos once as song.
 
 1. `<your-file>.errors.json` => failed at **sanitize** step
    1. if you want to retry this, you have to edit this file to make sure it has valid artist (`subtitles[0].name` - `<artist> - Topic` format) and track name (`title` - `Watched <track-name>` format)
    2. If the error file contains mostly entries where the *title* is an YouTube URL (this is 99% of cases when tracks are sent here as errors), you can process the errors automatically and set the title and artist in the format defined above automatically, by doing the steps described in [4.3.1 YouTube Song Details Extractor](#431-youtube-song-details-extractor)
-   3. after fixing the file, restart the whole flow from step 1 (sanitize), using the corrected file (ideally renamed) as input file
+   3. after fixing the file, restart the whole flow from step 1 (sanitize), using the corrected file
 2. `<your-file>.[songs|videos].spotify.rich.errors.json` => failed at **enrich** step
    1. it's usually due to spotify errors (e.g. unavailable, rate limiting, random errors);
    2. technically they can be retried without changing the file, since it's usually Spotify's fault or some network issue

@@ -35,7 +35,6 @@ def run_command(command: str, description: str, is_fatal: bool = True) -> bool:
             sys.exit(1)
         return False
 
-
 def check_file_exists(filepath: str) -> bool:
     """
     Check if a file exists and log the result
@@ -53,19 +52,23 @@ def print_title(text):
     print_log(text)
     print_log("=" * 80)
 
+
 def main():
     parser = argparse.ArgumentParser(description="All-in-one YouTube Music to Spotify converter pipeline")
+    
     parser.add_argument("--file", required=True, help="Input JSON file with YouTube Music watch history")
+    parser.add_argument("--ignore-videos", action="store_true", help="Specify in order to ignore videos watched on YouTube Music and process only songs")
+    parser.add_argument("--ignore-songs", action="store_true", help="Specify in order to ignore songs and process only videos (starting from conversion step)")
+    parser.add_argument("--use-pause", action="store_true", help="Specify in order to pause between each step")
+
     parser.add_argument("--skip-sanitize", action="store_true", help="Skip sanitization step (if already done)")
-    parser.add_argument("--skip-sanitize-export", action="store_true", help="Skip sanitization - videos CSV generation step (if you already exported it)")
     parser.add_argument("--skip-convert", action="store_true", help="Skip conversion steps (if already done)")
     parser.add_argument("--skip-enrich", action="store_true", help="Skip enrichment steps (if already done)")
-    parser.add_argument("--skip-songs-enrich", action="store_true", help="Skip song enrichment step (if already done)")
     parser.add_argument("--skip-report", action="store_true", help="Skip matched track analysis (import+export) (if already done)")
-    parser.add_argument("--skip-songs-report-export", action="store_true", help="Skip matched track analysis export (CSV report generation) for songs (if you already exported it)")
-    parser.add_argument("--skip-videos-report-export", action="store_true", help="Skip matched track analysis export (CSV report generation) for videos (if you already exported it)")
-    parser.add_argument("--ignore-videos", action="store_true", help="Specify in order to ignore videos watched on YouTube Music and process only songs")
-    parser.add_argument("--use-pause", action="store_true", help="Specify in order to pause between each step")
+    
+    parser.add_argument("--skip-sanitize-export", action="store_true", help="Skip sanitization - videos CSV generation step (if you already exported it)")
+    parser.add_argument("--skip-report-export", action="store_true", help="Skip matched track analysis export (CSV report generation) for songs/videos (if you already exported it)")
+    
     
     args = parser.parse_args()
     
@@ -75,165 +78,187 @@ def main():
     print_title("YouTube Music to Spotify Converter - All-in-One Pipeline")
     print_log(f"Input file: {input_file}")
     
-    # Check if input file exists
-    if not check_file_exists(input_file):
-        print_log("Input file not found. Exiting.")
-        sys.exit(1)
-
     # Store generated error files    
     error_files = []
 
     # Store OKed files
     ok_files = []
 
-    # Step 1: Sanitize and split input
-
-    # Define sanitizer output files
-    sanitized_songs = f"output\\{base_name}.songs.json"
-    sanitized_videos = f"output\\{base_name}.videos.json"
-    sanitized_validated_videos = f"output\\{base_name}.videos.reviewed.json"
-    sanitized_errors = f"output\\errors\\{base_name}.errors.json"
+    # Define output files as input file by default
+    songs_file_base = base_name
+    videos_file_base = base_name
+    songs_file = input_file
+    videos_file = input_file
     
 
+    # Step 1.1: Sanitize and split input
     if args.skip_sanitize:
-        print_log("Skipping sanitization step...")
+        print_log("Skipping step 1.1 - sanitization...")
     else:
-        print_title("STEP 1: Sanitize and split input")
+        print_title("STEP 1.1: Sanitize and split input")
         cmd = f"python sanitizer.py --file {input_file}" + (args.ignore_videos and " --ignore-videos" or "")
         run_command(cmd, "Sanitizing and splitting input data")
 
+        songs_file_base = f"{songs_file_base}.songs"
+        songs_file = f"output\\{songs_file_base}.json"
+        videos_file_base = f"{videos_file_base}.videos"
+        videos_file = f"output\\{videos_file_base}.json"
+
         # Print error files if created
+        sanitized_errors = f"output\\errors\\{base_name}.errors.json"
         if check_file_exists(sanitized_errors):
             error_files.append(sanitized_errors)
-        
-        # Manually review videos file if not ignoring videos
-        has_videos = check_file_exists(sanitized_videos)
+
+    if args.use_pause:
+        input("Press Enter to continue to the next step...")
+    
+
+    # Step 1.2: Manual Review of Videos File
+    if args.skip_sanitize or args.ignore_videos:
+        print_log("Skipping step 1.2 - sanitization video review step...")
+    else:
+        has_videos = check_file_exists(songs_file)
         if has_videos:
-            # Step 3: Manual Review of Videos File
-            print_title("STEP 3: Manual Review of Videos File")
-            cmd = f"python reporter-videos.py --file {sanitized_videos} --import"
+            print_title("STEP 1.2: Manual Review of Videos File")
+            cmd = f"python reporter-videos.py --file {videos_file} --import"
             if not args.skip_sanitize_export:
                 cmd += " --export"
             
             run_command(cmd, "Reviewing and validating videos file")
+            
+            videos_file_base = f"{videos_file_base}.reviewed"
+            videos_file = f"output\\{videos_file_base}.json"
 
     if args.use_pause:
         input("Press Enter to continue to the next step...")
 
-    # Step 2 + 3 + 4: Conversion
 
-    # Define converter output files
-    spotified_songs = f"output\\{base_name}.songs.spotify.json"
-    # Define expected output files
-    spotified_videos = f"output\\{base_name}.videos.reviewed.spotify.json"
-    
+    # Step 2.1 and 2.2: Conversion    
     if args.skip_convert:
         print_log("Skipping conversion step...")
     else:
-        # Step 2: Convert the songs
-        has_songs = check_file_exists(sanitized_songs)
-        if has_songs:
-            print_title("STEP 2: Convert songs to Spotify format")
-            cmd = f"python converter.py --file {sanitized_songs}"
-            run_command(cmd, "Converting songs to Spotify format")
+        # Step 2.1: Convert the songs
+        if not args.ignore_songs:
+            has_songs = check_file_exists(songs_file)
+            if has_songs:
+                print_title("STEP 2.1: Convert songs to Spotify format")
+                cmd = f"python converter.py --file {songs_file}"
+                run_command(cmd, "Converting songs to Spotify format")
+                
+                songs_file_base = f"{songs_file_base}.spotify"
+                songs_file = f"output\\{songs_file_base}.json"
+            else:
+                print_log("Skipping step 2.1 (songs conversion)")
         
-        has_videos = check_file_exists(sanitized_validated_videos)
-        if has_videos:
-            # Step 4 - Videos processing
-            print_title("STEP 4: Convert music videos to Spotify format")
-            cmd = f"python converter.py --file {sanitized_validated_videos}"
-            run_command(cmd, "Converting music videos to Spotify format")
-        else:
-            print_log("Skipping steps 3 and 4 (videos) since either --ignore-videos is enabled or no videos have been found")
+        # Enrich videos
+        if not args.ignore_videos:
+            has_videos = check_file_exists(videos_file)
+            if has_videos:
+                # Step 3 - Videos processing
+                print_title("STEP 2.2: Convert music videos to Spotify format")
+                cmd = f"python converter.py --file {videos_file}"
+                run_command(cmd, "Converting music videos to Spotify format")
+                
+                videos_file_base = f"{videos_file_base}.spotify"
+                videos_file = f"output\\{videos_file_base}.json"
+            else:
+                print_log("Skipping step 2.2 (videos conversion)")
 
     if args.use_pause:
         input("Press Enter to continue to the next step...")
 
-    # Step 5: Enrich with Spotify API track data
 
-    # Define enricher output files
-    enriched_songs_ok = f"output\\ok\\{base_name}.songs.spotify.rich.ok.json"
-    enriched_songs_doubt = f"output\\{base_name}.songs.spotify.rich.doubt.json"
-    enriched_songs_errors = f"output\\errors\\{base_name}.songs.spotify.rich.errors.json"
-    enriched_videos_ok = f"output\\ok\\{base_name}.videos.reviewed.spotify.rich.ok.json"
-    enriched_videos_doubt = f"output\\{base_name}.videos.reviewed.spotify.rich.doubt.json"
-    enriched_videos_errors = f"output\\errors\\{base_name}.videos.reviewed.spotify.rich.errors.json"
-
+    # Step 3: Enrich with Spotify API track data
     if args.skip_enrich:
         print_log("Skipping enrichment step...")
     else:
-        print_title("STEP 5: Enrich with Spotify track data")
+        print_title("STEP 3: Enrich with Spotify track data")
 
-        if not args.skip_songs_enrich:
-            # Enrich songs
-            has_songs = check_file_exists(spotified_songs)
+        # Enrich songs
+        if not args.ignore_songs:
+            has_songs = check_file_exists(songs_file)
             if has_songs:
-                cmd = f"python enricher.py --file {spotified_songs}"
+                cmd = f"python enricher.py --file {songs_file}"
                 run_command(cmd, "Enriching songs with Spotify data")
+
+                enriched_songs_ok = f"output\\ok\\{songs_file_base}.rich.ok.json"
+                enriched_songs_errors = f"output\\errors\\{songs_file_base}.rich.errors.json"
 
                 if check_file_exists(enriched_songs_ok):
                     ok_files.append(enriched_songs_ok)
                 
                 if check_file_exists(enriched_songs_errors):
                     error_files.append(enriched_songs_errors)
+                
+                songs_file_base = f"{songs_file_base}.rich.doubt"
+                songs_file = f"output\\{songs_file_base}.json"
 
         # Enrich videos
-        has_videos = check_file_exists(spotified_videos)
-        if has_videos:
-            cmd = f"python enricher.py --file {spotified_videos}"
-            run_command(cmd, "Enriching videos with Spotify data")
+        if not args.ignore_videos:
+            has_videos = check_file_exists(videos_file)
+            if has_videos:
+                cmd = f"python enricher.py --file {videos_file}"
+                run_command(cmd, "Enriching videos with Spotify data")
 
-            if check_file_exists(enriched_videos_ok):
-                ok_files.append(enriched_videos_ok)
+                enriched_videos_ok = f"output\\ok\\{videos_file_base}.rich.ok.json"
+                enriched_videos_errors = f"output\\errors\\{videos_file_base}.rich.errors.json"
 
-            if check_file_exists(enriched_videos_errors):
-                error_files.append(enriched_videos_errors)
+                if check_file_exists(enriched_videos_ok):
+                    ok_files.append(enriched_videos_ok)
+
+                if check_file_exists(enriched_videos_errors):
+                    error_files.append(enriched_videos_errors)
+                
+                videos_file_base = f"{videos_file_base}.rich.doubt"
+                videos_file = f"output\\{videos_file_base}.json"
 
     if args.use_pause:
         input("Press Enter to continue to the next step...")
 
-    # Step 6: Generate CSV reports for doubt cases
 
-    # Define output files
-    validated_songs = f"output\\ok\\{base_name}.songs.spotify.rich.doubt.validated.json"
-    validated_videos = f"output\\ok\\{base_name}.videos.reviewed.spotify.rich.doubt.validated.json"
-    invalid_songs = f"output\\errors\\{base_name}.songs.spotify.rich.doubt.invalid.json"
-    invalid_videos = f"output\\errors\\{base_name}.videos.reviewed.spotify.rich.doubt.invalid.json"
-
+    # Step 4: Generate CSV reports for doubt cases
     if args.skip_report:
         print_log("Skipping CSV analysis / reporting step...")
     else:
-        print_title("STEP 6: Generate CSV reports for manual review")
+        print_title("STEP 4: Generate CSV reports for manual review")
 
         # Report for songs
-        has_songs = check_file_exists(enriched_songs_doubt)
-        if has_songs:
-            cmd = f"python reporter.py --file {enriched_songs_doubt} --import"
-            if not args.skip_songs_report_export:
-                cmd += " --export"
-            
-            run_command(cmd, "Generating CSV analysis / reporting for songs doubt cases")
+        if not args.ignore_songs:
+            has_songs = check_file_exists(songs_file)
+            if has_songs:
+                cmd = f"python reporter.py --file {songs_file} --import"
+                if not args.skip_report_export:
+                    cmd += " --export"
+                
+                run_command(cmd, "Generating CSV analysis / reporting for songs doubt cases")
+                
+                validated_songs = f"output\\ok\\{songs_file_base}.validated.json"
+                invalid_songs = f"output\\errors\\{songs_file_base}.invalid.json"
 
-            if check_file_exists(validated_songs):
-                ok_files.append(validated_songs)
+                if check_file_exists(validated_songs):
+                    ok_files.append(validated_songs)
 
-            if check_file_exists(invalid_songs):
-                error_files.append(invalid_songs)
+                if check_file_exists(invalid_songs):
+                    error_files.append(invalid_songs)
 
         # Report for videos
-        has_videos = check_file_exists(enriched_videos_doubt)
-        if has_videos:
-            cmd = f"python reporter.py --file {enriched_videos_doubt} --import"
-            if not args.skip_videos_report_export:
-                cmd += " --export"
-            
-            run_command(cmd, "Generating CSV analysis / reporting for videos doubt cases")
+        if not args.ignore_videos:
+            has_videos = check_file_exists(videos_file)
+            if has_videos:
+                cmd = f"python reporter.py --file {videos_file} --import"
+                if not args.skip_report_export:
+                    cmd += " --export"
+                
+                run_command(cmd, "Generating CSV analysis / reporting for videos doubt cases")
 
-            if check_file_exists(validated_videos):
-                ok_files.append(validated_videos)
+                validated_videos = f"output\\ok\\{videos_file_base}.validated.json"
+                invalid_videos = f"output\\errors\\{videos_file_base}.invalid.json"
 
-            if check_file_exists(invalid_videos):
-                error_files.append(invalid_videos)
+                if check_file_exists(validated_videos):
+                    ok_files.append(validated_videos)
+
+                if check_file_exists(invalid_videos):
+                    error_files.append(invalid_videos)
 
     print_title("Pipeline execution complete!")
 
