@@ -221,9 +221,8 @@ if __name__ == "__main__":
         # Read CSV file
         rows = read_csv(csv_file)
 
-        # Read json original entries (if export done, they are already read)
-        if not do_export:
-            entries = read_spotify_entries(input_file)
+        # Read json original entries (re-read to count for edits)
+        entries = read_spotify_entries(input_file)
         
         # import the choices (with range validation)
         output_entries, invalid_entries = import_choices(entries, rows)
