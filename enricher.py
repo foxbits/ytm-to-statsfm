@@ -3,7 +3,6 @@ import json
 import os
 from typing import List
 
-from dotenv import load_dotenv
 from matcher import score_spotify_entries
 from objects.process_metadata import ProcessingStatus
 from objects.spotify_processed_track import SpotifyProcessedTracks
@@ -105,24 +104,12 @@ if __name__ == "__main__":
     # input file
     input_file = args.file
     
-    # Load environment variables
-    load_dotenv()
-    
-    # Get Spotify API credentials
-    client_id = os.getenv('SPOTIFY_CLIENT_ID')
-    client_secret = os.getenv('SPOTIFY_CLIENT_SECRET')
-    market = os.getenv('CONN_COUNTRY')
-
-    # Get Spotify API calls settings
-    search_results_limit = int(os.getenv('SPOTIFY_SEARCH_RESULTS_LIMIT', 5))
-    max_retries = int(os.getenv('SPOTIFY_MAX_RETRIES', 10))
-
     # Get scoring settings
     score_tracks_by = os.getenv('SCORE_TRACKS_BY', 'equal_weight')
     minimum_match_decision_score = float(os.getenv('MINIMUM_MATCH_DECISION_SCORE', 0.9)) * 100
 
     # Initialize Spotify enricher
-    spoticlient = SpotifyClient(client_id, client_secret, market, search_results_limit, max_retries)
+    spoticlient = SpotifyClient.from_env()
 
     # Read Spotify entries
     entries = read_spotify_entries(input_file)

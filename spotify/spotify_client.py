@@ -1,6 +1,9 @@
+import os
 import random
 import time
 from typing import List
+
+from dotenv import load_dotenv
 from spotify.constants import DEFAULT_BASE_BACKOFF_SECONDS, DEFAULT_MIN_INTERVAL_SECONDS
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
@@ -35,6 +38,22 @@ class SpotifyClient:
         self.min_request_interval = DEFAULT_MIN_INTERVAL_SECONDS  # Start with 100ms between requests
         self.max_retries = max_retries
         self.base_backoff = DEFAULT_BASE_BACKOFF_SECONDS  # Base backoff time in seconds
+
+    @classmethod
+    def from_env(cls):
+        # Load environment variables
+        load_dotenv()
+        
+        # Get Spotify API credentials
+        client_id = os.getenv('SPOTIFY_CLIENT_ID')
+        client_secret = os.getenv('SPOTIFY_CLIENT_SECRET')
+        market = os.getenv('CONN_COUNTRY')
+
+        # Get Spotify API calls settings
+        search_results_limit = int(os.getenv('SPOTIFY_SEARCH_RESULTS_LIMIT', 5))
+        max_retries = int(os.getenv('SPOTIFY_MAX_RETRIES', 10))
+
+        return SpotifyClient(client_id, client_secret, market, search_results_limit, max_retries)
 
     def _adaptive_delay(self):
         """
