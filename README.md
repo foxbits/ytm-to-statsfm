@@ -197,10 +197,12 @@ This step facilitates two functions:
   - **your_choice**: 
     - a number from the `choices` column representing the track number from the possible matches list that you consider a correct match
     - `1` <= `number of possible matches` <= `SPOTIFY_SEARCH_RESULTS_LIMIT`
-    - use `-1` if you consider that none of the matches are correct and the song should not be used in the listening history or it should be reprocessed later; if no result from the list seems correct, it might mean that the song does not exist in Spotify, but if you *know better* that the song is actually on spotify, you can reprocess it - see [4. Caveats / Troubleshooting](#4-caveats--troubleshooting) 
+    - use `-1` if you consider that none of the matches are correct and the song should not be used in the listening history or it should be reprocessed later; if no result from the list seems correct, it might mean that the song does not exist in Spotify, but if you *know better* that the song is actually on spotify, see below `-2`
+    - use `-2` if you found the track manually on spotify and enter the Spotify Track URL in the `new_spotify_url` column
   - **choices**: a list of songs, one per row, that have been returned by Spotify as potential matches for the current track in the format `<id>. (<score>)<artist> - <track>`
   - **original_artist**: the original artist name as found in the YouTube Music listening history
   - **original_track**: the original track name as found in the YouTube Music listening history
+  - **new_spotify_url**: a spotify link for the song that will be used to override existing track data if `your_choice` is set to `-2`. Needs to be a valid Spotify URL in the format `https://open.spotify.com/track/<track_id>`
 - importing the same **CSV report** with the `your_choice` column correctly populated for all rows 
 
 
@@ -288,17 +290,15 @@ This is a wrapper around the previous steps, intended to be used as an all-in-on
 How to use:
 1. Run `python converter-aio.py --file watch-history.json`
    1. You can use `--ignore-videos` if you want to ignore the music videos found in the YouTube Music history (as specified in the individual steps and in [Caveats / Troubleshooting]((#4-caveats--troubleshooting))); YouTube videos are ignored by default
-   2. You can use `--use-pause` if you want to pause after each step
-   3. You can use `--skip-**` instructions to skip certain steps of the process (simulate individual steps or only run from a certain step forward):
-      1. `--skip-sanitize` - skip first step (history sanitization)
-      2. `--skip-sanitize-export` - (only if videos not ignored): skip music video CSV export generation (use only if you already previously generated the file but it was too big to fill in therefore you start the process at a later time from the import step)
-      3. `--skip-convert` - skip second step (conversion of history to spotify file format)
-      4. `--skip-enrich` - skip third step (data enrichment from Spotify API)
-      4. `--skip-songs-enrich` - skip third step for songs (data enrichment from Spotify API)
-      5. `--skip-report` - skips the final step (manual score matching - export & import)
-      6. `--skip-songs-report-export` - skip track score analysis CSV export generation for *songs* (use only if you already previously generated the file but it was too big to fill in therefore you start the process at a later time from the import step)
-      7. `--skip-videos-report-export` - (only if videos not ignored): skip track score analysis CSV export generation for *videos* (use only if you already previously generated the file but it was too big to fill in therefore you start the process at a later time from the import step)
-      8. `--use-pause` - if you want the script to pause and wait for user input after every major step
+   2. You can use `--ignore-songs` if you want to process only the music videos found in the YouTube Music history (applies from Step 2 - Conversion, first step always does both)
+   3. You can use `--use-pause` if you want to pause after each step
+   4. You can use `--skip-**` instructions to skip certain steps of the process (simulate individual steps or only run from a certain step forward):
+      1. `--skip-sanitize` - skip first step (history sanitization); this includes video review as well
+      2. `--skip-convert` - skip second step (conversion of history to spotify file format)
+      3. `--skip-enrich` - skip third step (data enrichment from Spotify API)
+      4. `--skip-report` - skips the final step (manual score matching - export & import)
+      5. `--skip-sanitize-export` - skip *music video* CSV export generation (use only if you already previously generated the file but it was too big to fill in therefore you start the process at a later time from the import step directly)
+      6. `--skip-report-export` -skip track score analysis CSV export generation for *songs*/*videos* (use only if you already previously generated the file but it was too big to fill in therefore you start the process at a later time from the import step)
 2. Follow the instruction on screen
    1. any errors will stop the process and it needs to be started again
    2. at some points there will be instructions on screen which require manual intervention
@@ -329,27 +329,21 @@ I recommend you to test first with a small portion of your data (just pick a few
 
 ### 4.3 Eror reprocessing
 
-The errors files generated as output from any of the scripts (listening history entries that end up as errors), written in `output\\errors`, depending on the failing step, can be actioned as described below (based on error type / error step):
+The errors files generated as output from any of the scripts (listening history entries that end up as errors), written in `output\\errors`, depending on the failing step, can be actioned as described below (based on error type / error step).
+
+Note: when reprocessing a single file, use `--ignore-videos` as flag, otherwise the file will get processed two times, once as videos once as song.
 
 1. `<your-file>.errors.json` => failed at **sanitize** step
    1. if you want to retry this, you have to edit this file to make sure it has valid artist (`subtitles[0].name` - `<artist> - Topic` format) and track name (`title` - `Watched <track-name>` format)
    2. If the error file contains mostly entries where the *title* is an YouTube URL (this is 99% of cases when tracks are sent here as errors), you can process the errors automatically and set the title and artist in the format defined above automatically, by doing the steps described in [4.3.1 YouTube Song Details Extractor](#431-youtube-song-details-extractor)
-   3. after fixing the file, restart the whole flow from step 1 (sanitize), using the corrected file (ideally renamed) as input file
+   3. after fixing the file, restart the whole flow from step 1 (sanitize), using the corrected file
 2. `<your-file>.[songs|videos].spotify.rich.errors.json` => failed at **enrich** step
    1. it's usually due to spotify errors (e.g. unavailable, rate limiting, random errors);
    2. technically they can be retried without changing the file, since it's usually Spotify's fault or some network issue
    3. but certain errors might be due to weird entries in history and might require track name (`master_metadata_track_name`) / artist (`master_metadata_album_artist_name`) edits (very rare)
 3. `<your-file>.[songs|videos].spotify.rich.doubt.invalid.json` => marked as not matched at **score analysis** step
-   1. it means Spotify returned some tracks as possible matches that you marked as incorrect (you didn't find any of the results correct)
-   2. if the input track name (`master_metadata_track_name`) and artist (`master_metadata_album_artist_name`) (from the source json) are correct, then it means Spotify really doesn't have the track
-   3. if the input track name and artist are incorrect, then edit them end retry the file (this `*.invalid.json` file) from the **enrich** step (feeding it as input)
-   4. what you can also try is to increase the `SPOTIFY_SEARCH_RESULTS_LIMIT` to make Spotify return more results
-   5. after doing any changes, re-run the enrich step by using the edited (formerly invalid) file as input
-   6. (technical) (manual) as a *hack*, if you don't want to run the enricher again or if the enricher does really not find in the search results the track you expect: 
-         -  you can actually manually edit the reference file `output\\*.invalid.json` file by finding the track name (there will be multiple entries, since it's listening history!)
-         -  in the json entry for it, inside `metadata -> tracks` array, add a new object at first position with the Spotify Track details manually entered by yourself (see how to fill it in by looking at the example from [5.3 Spotify Track to Spotify listening history (with metadata) format](#53-spotify-track-to-spotify-listening-history-with-metadata-format), which has a single track entry)
-         -  then, in the CSV, use as choice `1` (the first track from the track list, e.g. what you just added)
-         -  use the CSV normally in the reporting step and it will mark your track as validated (by you)
+   1. it means Spotify returned some tracks as possible matches that you marked as incorrect (you didn't find any of the results correct and you also did not choose to use any manual spotify link import)
+   2. nothing can be done about these entries
 4. Hint: It is recommended to do some cleanup in the `output` directory when starting to reprocess error files - move them to the root directory and delete the rest of the files (besides the `ok` directory, or back that up since that one contains the final output). Once using them as input, their respective output will start generating in the output directory.
 
 

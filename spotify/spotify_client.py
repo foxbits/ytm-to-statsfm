@@ -1,6 +1,9 @@
+import os
 import random
 import time
 from typing import List
+
+from dotenv import load_dotenv
 from spotify.constants import DEFAULT_BASE_BACKOFF_SECONDS, DEFAULT_MIN_INTERVAL_SECONDS
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
@@ -35,6 +38,22 @@ class SpotifyClient:
         self.min_request_interval = DEFAULT_MIN_INTERVAL_SECONDS  # Start with 100ms between requests
         self.max_retries = max_retries
         self.base_backoff = DEFAULT_BASE_BACKOFF_SECONDS  # Base backoff time in seconds
+
+    @classmethod
+    def from_env(cls):
+        # Load environment variables
+        load_dotenv()
+        
+        # Get Spotify API credentials
+        client_id = os.getenv('SPOTIFY_CLIENT_ID')
+        client_secret = os.getenv('SPOTIFY_CLIENT_SECRET')
+        market = os.getenv('CONN_COUNTRY')
+
+        # Get Spotify API calls settings
+        search_results_limit = int(os.getenv('SPOTIFY_SEARCH_RESULTS_LIMIT', 5))
+        max_retries = int(os.getenv('SPOTIFY_MAX_RETRIES', 10))
+
+        return SpotifyClient(client_id, client_secret, market, search_results_limit, max_retries)
 
     def _adaptive_delay(self):
         """
@@ -173,3 +192,48 @@ class SpotifyClient:
             # Cache negative result to avoid retrying
             self.cache[cache_key] = None
             raise e # raise to propagate error
+
+    def get_track_info(self, track_url: str) -> TrackInfo:
+        """
+        Get detailed track info from Spotify track URL
+        """
+        try:
+            # Extract track ID from URL
+            if "track/" not in track_url:
+                print_log(f"Invalid Spotify track URL: {track_url}")
+                return None
+
+            track_id = track_url.split("track/")[1].split("?")[0].strip()
+            if not track_id:
+                print_log(f"Could not extract track ID from URL: {track_url}")
+                return None
+            
+            # Check cache first
+            if track_id in self.cache:
+                return self.cache[track_id]
+            
+            # Fetch track info with rate limiting
+            track = self._make_spotify_request(self.spotify.track, track_id, market=self.market)
+            
+            if not track:
+                print_log(f"No track found for ID: {track_id}")
+                self.cache[track_id] = None
+                return None
+            
+            track_info = TrackInfo(
+                id=track['id'],
+                name=track['name'],
+                album_name=track['album']['name'],
+                duration_ms=track['duration_ms'],
+                artist_name=", ".join(artist['name'] for artist in track['artists']) if track['artists'] else "",
+                exact_search_match=True  # Direct fetch, so consider it an exact match
+            )
+            
+            # Cache the result
+            self.cache[track_id] = track_info
+            return track_info
+
+        except Exception as e:
+            print_log(f"Error fetching track info from URL '{track_url}': {e}")
+            self.cache[track_url] = None
+            raise e

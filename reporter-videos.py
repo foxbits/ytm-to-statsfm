@@ -223,9 +223,8 @@ if __name__ == "__main__":
             print_log("Failed to read CSV file")
             exit(1)
 
-        # Read original JSON entries (if export was not done, read them now)
-        if not do_export:
-            entries = read_video_entries(input_file)
+        # Read original JSON entries (re-read to account for edits)
+        entries = read_video_entries(input_file)
         
         if not entries:
             print_log("No entries to process")
