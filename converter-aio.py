@@ -117,7 +117,7 @@ def main():
     if args.skip_sanitize or args.ignore_videos:
         print_log("Skipping step 1.2 - sanitization video review step...")
     else:
-        has_videos = check_file_exists(songs_file)
+        has_videos = check_file_exists(videos_file)
         if has_videos:
             print_title("STEP 1.2: Manual Review of Videos File")
             cmd = f"python reporter-videos.py --file {videos_file} --import"
